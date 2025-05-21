@@ -6,14 +6,6 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
-    proxy: {
-      '/api': {
-        target: 'http://localhost:5000',
-        changeOrigin: true,
-        secure: false,
-        // Remove the rewrite to keep the /api prefix
-      }
-    }
   },
   plugins: [
     react(),
@@ -43,4 +35,3 @@ export default defineConfig(({ mode }) => ({
     include: ['react-day-picker'],
   },
 }));
-
