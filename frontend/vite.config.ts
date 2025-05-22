@@ -1,6 +1,7 @@
-import { defineConfig } from 'vite'
+import { defineConfig } from 'vite';
 import react from "@vitejs/plugin-react-swc";
-import tailwindcss from 'tailwindcss'
+import tailwindcss from 'tailwindcss';
+import path from "path";
 
 export default defineConfig(({ mode }) => ({
   server: {
