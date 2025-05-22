@@ -34,12 +34,17 @@ def infer_column_types(data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 
 
 def prepare_data(
-    dataset: List[Dict[str, Any]], columns_info: List[Dict[str, Any]]
+    dataset, columns_info: List[Dict[str, Any]]
 ) -> pd.DataFrame:
-    if not dataset:
-        return pd.DataFrame()
-
-    df = pd.DataFrame(dataset)
+    import pandas as pd
+    if isinstance(dataset, pd.DataFrame):
+        df = dataset.copy()
+        if df.empty:
+            return df
+    else:
+        if not dataset:
+            return pd.DataFrame()
+        df = pd.DataFrame(dataset)
     rename_map = {}
     date_cols_to_convert = []
     factor_cols_original = []
@@ -67,6 +72,26 @@ def prepare_data(
 
     if rename_map:
         df.rename(columns=rename_map, inplace=True)
+
+
+    if "actual_date" not in df.columns:
+        for col in df.columns:
+            if col.lower().strip() in [
+                "delivered to client date",
+                "data de entrega ao cliente",
+                "data de entrega",
+                "data real"
+            ]:
+                df.rename(columns={col: "actual_date"}, inplace=True)
+    if "estimated_date" not in df.columns:
+        for col in df.columns:
+            if col.lower().strip() in [
+                "scheduled delivery date",
+                "data de entrega prevista",
+                "data prevista",
+                "data estimada"
+            ]:
+                df.rename(columns={col: "estimated_date"}, inplace=True)
 
     for col_name in date_cols_to_convert:
         if col_name in df.columns:

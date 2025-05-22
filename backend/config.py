@@ -8,8 +8,7 @@ PROCESSED_FOLDER = BASE_DIR / "processed_data"
 ALLOWED_EXTENSIONS = {"csv", "xlsx", "xls"}
 MAX_FILE_SIZE = 10 * 1024 * 1024
 
-CORS_ORIGINS = [os.environ.get("FRONTEND_URL")]
-
+CORS_ORIGINS = os.environ.get("CORS_ORIGINS")
 CORS_ALLOW_HEADERS = ["Content-Type", "Authorization"]
 CORS_METHODS = ["GET", "POST", "OPTIONS"]
 CORS_SUPPORTS_CREDENTIALS = True

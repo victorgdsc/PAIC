@@ -18,6 +18,8 @@ from routes.forecast import forecast_bp
 from routes.predict import predict_bp
 from routes.scatter import scatter_bp
 from routes.pareto import pareto_bp
+from routes.chunk import chunk_bp
+from routes_upload_from_link import bp as upload_from_link_bp
 
 app = Flask(__name__)
 
@@ -27,7 +29,7 @@ app.config["PROCESSED_FOLDER"] = PROCESSED_FOLDER
 CORS(
     app,
     resources={
-        r"/api/*": {
+        r"/*": {
             "origins": CORS_ORIGINS,
             "allow_headers": CORS_ALLOW_HEADERS,
             "methods": CORS_METHODS,
@@ -47,6 +49,8 @@ blueprints = [
     predict_bp,
     scatter_bp,
     pareto_bp,
+    chunk_bp,
+    upload_from_link_bp, 
 ]
 
 for bp in blueprints:

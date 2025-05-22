@@ -10,9 +10,15 @@ import { Button } from "@/components/ui/button";
 const Index: React.FC = () => {
   const { fileInfo, analysisResult } = useData();
   const navigate = useNavigate();
+  const [activeStep, setActiveStep] = React.useState<'upload' | 'mapping' | 'analysis'>(!fileInfo ? 'upload' : !analysisResult ? 'mapping' : 'analysis');
 
   const goToAnalysis = () => {
+    setActiveStep('analysis');
     navigate("/analysis");
+  };
+
+  const handleUploadSuccess = () => {
+    setActiveStep('mapping');
   };
 
   return (
@@ -114,7 +120,8 @@ const Index: React.FC = () => {
         </div>
 
         <div className="animate-slide-in">
-          {!fileInfo ? <FileUpload /> : <ColumnMapping />}
+          {activeStep === 'upload' && <FileUpload onSuccess={handleUploadSuccess} />}
+          {activeStep === 'mapping' && <ColumnMapping />}
         </div>
 
         {analysisResult && (

@@ -255,7 +255,6 @@ def predict_delay(df: pd.DataFrame, query: dict, columns: list):
         }
 
     except Exception as e:
-        logger.error(f"Erro na previsão: {str(e)}", exc_info=True)
         return {
             "error": f"Erro ao processar a previsão: {str(e)}",
             "predictedDelay": 0,

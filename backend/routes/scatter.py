@@ -55,43 +55,27 @@ def scatter_data_route():
         if not file_id:
             return jsonify({"error": "fileId não fornecido"}), 400
 
+        from utils.file_utils import load_processed_dataframe
         df, load_error = load_processed_dataframe(file_id)
         if load_error or df is None:
             return jsonify({"error": f"Erro ao carregar dados: {load_error}"}), 500
+
 
         if data_inicio:
             df = df[df["actual_date"] >= data_inicio]
         if data_fim:
             df = df[df["actual_date"] <= data_fim]
 
-        if fator and fator in df.columns:
-            if fator_valor is not None and fator_valor != "ALL":
-                df = df[df[fator] == fator_valor]
-            scatter_data = (
-                df[
-                    ["actual_date", "estimated_date", "delay_days"]
-                    + [
-                        col
-                        for col in df.columns
-                        if col not in ["actual_date", "estimated_date", "delay_days"]
-                    ]
-                ]
-                .dropna(subset=["actual_date", "delay_days"])
-                .to_dict(orient="records")
-            )
-        else:
-            scatter_data = (
-                df[
-                    ["actual_date", "estimated_date", "delay_days"]
-                    + [
-                        col
-                        for col in df.columns
-                        if col not in ["actual_date", "estimated_date", "delay_days"]
-                    ]
-                ]
-                .dropna(subset=["actual_date", "delay_days"])
-                .to_dict(orient="records")
-            )
+        scatter_cols = ["actual_date", "estimated_date", "delay_days"] + [col for col in df.columns if col not in ["actual_date", "estimated_date", "delay_days"]]
+        scatter_cols = [col for col in scatter_cols if col in df.columns]
+        try:
+            df_scatter = df[scatter_cols].dropna(subset=["actual_date", "delay_days"])
+            if fator and fator in df_scatter.columns:
+                if fator_valor is not None and fator_valor != "ALL":
+                    df_scatter = df_scatter[df_scatter[fator] == fator_valor]
+            scatter_data = df_scatter.to_dict(orient="records")
+        except Exception as e:
+            return jsonify({"error": f"Erro ao montar scatter: {str(e)}", "cols": list(df.columns), "scatter_cols": scatter_cols}), 500
 
         if len(scatter_data) > limit:
             scatter_data = random.sample(scatter_data, limit)

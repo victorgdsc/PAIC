@@ -1,30 +1,37 @@
 import React, { useCallback, useState, useEffect } from "react";
-import { Upload ,  FileSpreadsheet,  X,  CheckCircle2 ,  Info ,  ChevronDown , ChevronUp } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Upload, FileSpreadsheet, X, CheckCircle2, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useData } from "@/context/DataContext";
+import { uploadCSVFromDriveLink } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { toast } from "@/lib/toast-helpers";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
-import ColumnNumericToggle from "./ColumnNumericToggle";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { TEST_CONFIG } from "@/config/testConfig";
+import { Card, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
+import { TEST_CONFIG, type ExampleFile } from "@/config/testConfig";
 
-const FileUpload: React.FC = () => {
+interface FileUploadProps {
+  onSuccess?: () => void;
+}
+
+const FileUpload: React.FC<FileUploadProps> = ({ onSuccess }) => {
   const {
     handleFileUpload,
     fileInfo,
     isLoading,
     resetData,
     dataStats,
-    columns,
-    updateColumnNumeric,
+    setColumns,
+    setAllColumns,
+    setFileInfo,
+    setRawData,
   } = useData();
+  
   const [dragActive, setDragActive] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [showNumericOptions, setShowNumericOptions] = useState(false);
-  const [localFile, setLocalFile] = useState<File | null>(null);
+  const [selectedExample, setSelectedExample] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   const validateFile = (file: File): boolean => {
     const fileType = file.name.split(".").pop()?.toLowerCase() || "";
@@ -47,22 +54,57 @@ const FileUpload: React.FC = () => {
     return true;
   };
 
-  useEffect(() => {
-    if (TEST_CONFIG.AUTO_UPLOAD_ENABLED) {
-      const fetchAndUpload = async () => {
-        try {
-          const response = await fetch(TEST_CONFIG.SAMPLE_FILE_PATH);
-          const blob = await response.blob();
-          const file = new File([blob], TEST_CONFIG.SAMPLE_FILE_NAME, {
-            type: "text/csv",
-          });
-          await handleFileUpload(file);
-        } catch (err) {
+  const navigate = useNavigate();
+
+  const handleExampleSelect = async (exampleFile: ExampleFile) => {
+    try {
+      setIsUploading(true);
+      setSelectedExample(exampleFile.id);
+
+
+      const result = await uploadCSVFromDriveLink(exampleFile.path);
+      toast.success('Arquivo de exemplo baixado e salvo com sucesso!');
+
+      if (result && result.columns) {
+        let mappedColumns = result.columns;
+
+        if (exampleFile.columnMapping) {
+          mappedColumns = mappedColumns.map(col =>
+            exampleFile.columnMapping && exampleFile.columnMapping[col.name]
+              ? { ...col, role: exampleFile.columnMapping[col.name] }
+              : col
+          );
         }
-      };
-      fetchAndUpload();
+
+        if (exampleFile.numericColumns) {
+          mappedColumns = mappedColumns.map(col =>
+            exampleFile.numericColumns?.includes(col.name)
+              ? { ...col, isNumeric: true }
+              : col
+          );
+        }
+        if (typeof setColumns === 'function') setColumns(mappedColumns || []);
+        if (typeof setAllColumns === 'function') setAllColumns(mappedColumns || []);
+        if (typeof setFileInfo === 'function') setFileInfo({
+          name: result.filename || exampleFile.name,
+          type: 'text/csv',
+          size: result.size || 0,
+          fileId: result.fileId || result.file_id,
+          totalRows: result.totalRows,
+          isPartialData: result.isPartialData,
+        });
+        if (typeof setRawData === 'function') setRawData(result.data || []);
+      }
+
+      if (onSuccess) onSuccess();
+    } catch (error: any) {
+      toast.error(error?.message || 'Erro ao carregar arquivo de exemplo.');
+      console.error(error);
+    } finally {
+      setIsUploading(false);
     }
-  }, []);
+  };
+
 
   const simulateUploadProgress = () => {
     setUploadProgress(0);
@@ -113,28 +155,19 @@ const FileUpload: React.FC = () => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       if (validateFile(file)) {
-        setLocalFile(file);
         simulateUploadProgress();
+        handleFileUpload(file).then(() => {
+          if (onSuccess) onSuccess();
+        });
       }
     }
-  }, []);
-
-  const handleConfirmUpload = useCallback(() => {
-    if (localFile) {
-      handleFileUpload(localFile);
-      setLocalFile(null);
-    }
-  }, [localFile, handleFileUpload]);
-
-  const handleToggleNumeric = (columnName: string, isNumeric: boolean) => {
-    updateColumnNumeric(columnName, isNumeric);
-  };
+  }, [handleFileUpload]);
 
   const formatFileSize = (bytes: number): string => {
-    if (bytes < 1024) return bytes + " B";
-    else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + " KB";
-    else if (bytes < 1073741824) return (bytes / 1048576).toFixed(1) + " MB";
-    else return (bytes / 1073741824).toFixed(1) + " GB";
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1048576) return `${(bytes / 1024).toFixed(1)} KB`;
+    if (bytes < 1073741824) return `${(bytes / 1048576).toFixed(1)} MB`;
+    return `${(bytes / 1073741824).toFixed(1)} GB`;
   };
 
   const handleButtonClick = () => {
@@ -142,7 +175,63 @@ const FileUpload: React.FC = () => {
   };
 
   return (
-    <div className="w-full max-w-xl mx-auto">
+    <div className="w-full max-w-4xl mx-auto space-y-8">
+      <div className="space-y-4">
+        <h3 className="text-lg font-medium">Arquivos de Exemplo</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {TEST_CONFIG.EXAMPLE_FILES.map((example) => (
+            <Card 
+              key={example.id}
+              className={cn(
+                "cursor-pointer transition-all hover:border-primary hover:shadow-md h-full flex flex-col",
+                selectedExample === example.id ? "border-primary border-2" : ""
+              )}
+              onClick={() => handleExampleSelect(example)}
+            >
+              <CardHeader className="p-4 pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base">{example.name}</CardTitle>
+                  {selectedExample === example.id && (
+                    <div className="h-2 w-2 rounded-full bg-primary" />
+                  )}
+                </div>
+                <CardDescription className="text-xs">
+                  {example.description}
+                </CardDescription>
+              </CardHeader>
+              <CardFooter className="p-4 pt-0 mt-auto">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="w-full"
+                  disabled={isUploading && selectedExample === example.id}
+                >
+                  {isUploading && selectedExample === example.id ? (
+                    <>
+                      <div className="h-4 w-4 mr-2 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                      Carregando...
+                    </>
+                  ) : (
+                    'Selecionar'
+                  )}
+                </Button>
+              </CardFooter>
+            </Card>
+          ))}
+        </div>
+      </div>
+
+      <div className="relative">
+        <div className="absolute inset-0 flex items-center">
+          <span className="w-full border-t" />
+        </div>
+        <div className="relative flex justify-center text-xs uppercase">
+          <span className="bg-background px-2 text-muted-foreground">
+            Ou faça upload de um arquivo
+          </span>
+        </div>
+      </div>
+
       {!fileInfo ? (
         <div
           className={cn(
@@ -181,8 +270,7 @@ const FileUpload: React.FC = () => {
               Carregue seu arquivo de dados
             </h3>
             <p className="text-muted-foreground text-sm max-w-xs mb-6 text-center">
-              Arraste e solte seu arquivo CSV ou Excel aqui, ou clique no botão
-              abaixo
+              Arraste e solte seu arquivo CSV ou Excel aqui, ou clique no botão abaixo
             </p>
             <Button
               type="button"
@@ -199,12 +287,10 @@ const FileUpload: React.FC = () => {
                 Arquivo completo: Os dados serão carregados integralmente.
               </p>
               <p className="mb-1 text-center">
-                Arquivos grandes (&gt;100MB): O processamento pode levar mais
-                tempo.
+                Arquivos grandes (&gt;100MB): O processamento pode levar mais tempo.
               </p>
               <p className="mb-2 text-center">
-                Arquivos muito grandes (&gt;500MB): Pode haver lentidão
-                dependendo da memória disponível.
+                Arquivos muito grandes (&gt;500MB): Pode haver lentidão dependendo da memória disponível.
               </p>
             </div>
           </div>

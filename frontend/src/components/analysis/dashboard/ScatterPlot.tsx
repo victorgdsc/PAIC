@@ -29,28 +29,34 @@ const ScatterPlot: React.FC = () => {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (columns && columns.length > 0) {
-      setAvailableColumns(columns.map(col => col.name).filter(name => name !== 'actual_date' && name !== 'delay_days'));
-    }
-  }, [columns]);
+  if (fileInfo?.fileId) {
+    api.post('/api/scatter-data', { fileId: fileInfo.fileId })
+      .then(res => {
+        setAvailableColumns(
+          (res.data.columns || []).filter((name: string) => {
+            const column = columns.find((col) => col.name === name);
+            return (
+              !column?.isNumeric &&
+              name !== "actual_date" &&
+              name !== "delay_days" &&
+              name !== "estimated_date"
+            );
+          })
+        );
+        setMinDate(res.data.min_date || '');
+        setMaxDate(res.data.max_date || '');
+        setPendingStartDate(res.data.min_date || '');
+        setPendingEndDate(res.data.max_date || '');
+      });
+  }
+}, [fileInfo, columns]);
 
-  useEffect(() => {
-    if (fileInfo?.name) {
-      api.post('/scatter-data', { fileId: fileInfo.fileId })
-        .then(res => {
-          setAvailableColumns((res.data.columns || []).filter((name: string) => name !== 'actual_date' && name !== 'delay_days' && name !== 'estimated_date'));
-          setMinDate(res.data.min_date || '');
-          setMaxDate(res.data.max_date || '');
-          setPendingStartDate(res.data.min_date || '');
-          setPendingEndDate(res.data.max_date || '');
-        });
-    }
-  }, [fileInfo]);
+  
 
   useEffect(() => {
     if (pendingFactor !== 'ALL' && pendingFactor) {
-      api.post('/scatter-factor-values', {
-        fileId: fileInfo?.name,
+      api.post('/api/scatter-factor-values', {
+        fileId: fileInfo?.fileId,
         fator: pendingFactor,
         dataInicio: pendingStartDate || undefined,
         dataFim: pendingEndDate || undefined,
@@ -77,7 +83,7 @@ const ScatterPlot: React.FC = () => {
           fatorValorMax = v + delta;
         }
       }
-      const res = await api.post('/scatter-data', {
+      const res = await api.post('/api/scatter-data', {
         fileId: fileInfo.fileId,
         fator: pendingFactor === 'ALL' ? undefined : pendingFactor,
         fatorValor: (!getIsNumeric(pendingFactor) || fatorValorMin === undefined) ? (fatorValor === '' ? undefined : fatorValor) : undefined,
@@ -144,11 +150,9 @@ const ScatterPlot: React.FC = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="ALL">Ver tudo</SelectItem>
-                  {availableColumns
-                    .filter(col => !getIsNumeric(col))
-                    .map(col => (
-                      <SelectItem key={col} value={col}>{col}</SelectItem>
-                    ))}
+                  {availableColumns.map(col => (
+                    <SelectItem key={col} value={col}>{col}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

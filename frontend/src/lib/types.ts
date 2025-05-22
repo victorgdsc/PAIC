@@ -5,6 +5,7 @@ export interface DataColumn {
   selected: boolean;
   isNumeric?: boolean;
   role?: "estimatedDate" | "actualDate" | "factor" | "delay";
+  originalName?: string;
 }
 
 export interface DataRow {
@@ -33,6 +34,7 @@ export interface AnalysisResult {
   glmAnalysis?: GlmAnalysis | null;
   insights: string[];
   modelUsed?: string;
+  modelType?: string;
   error?: string;
   totalRows: number;
 }

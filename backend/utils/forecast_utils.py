@@ -62,31 +62,38 @@ def get_arma_forecast(
                 "forecast": [],
             }
 
+    unreliable = False
+    warning = None
     if len(monthly_data.dropna()) < 15:
-        historical_formatted = [
-            {"date": idx.strftime("%Y-%m-%d"), "actual_delay": val}
-            for idx, val in monthly_data.dropna().items()
-        ]
-        simple_forecast_val = (
-            monthly_data.dropna().tail(3).mean()
-            if len(monthly_data.dropna()) >= 3
-            else monthly_data.dropna().mean()
-        )
-        if pd.isna(simple_forecast_val):
-            simple_forecast_val = 0
+        unreliable = True
+        warning = f"Forecast NÃO CONFIÁVEL: dados mensais insuficientes ({len(monthly_data.dropna())}) para análise ARMA. Mínimo recomendado: 15. Mostrando previsão baseada na média."
+    historical_formatted = [
+        {"date": idx.strftime("%Y-%m-%d"), "actual_delay": val}
+        for idx, val in monthly_data.dropna().items()
+    ]
+    simple_forecast_val = (
+        monthly_data.dropna().tail(3).mean()
+        if len(monthly_data.dropna()) >= 3
+        else monthly_data.dropna().mean()
+    )
+    if pd.isna(simple_forecast_val):
+        simple_forecast_val = 0
 
-        forecast_simple = [
-            {
-                "date": dt.strftime("%Y-%m-%d"),
-                "predicted_delay": round(simple_forecast_val, 2),
-                "conf_int_lower": round(simple_forecast_val * 0.8, 2),
-                "conf_int_upper": round(simple_forecast_val * 1.2, 2),
-            }
-            for dt in forecast_dates
-        ]
+    forecast_simple = [
+        {
+            "date": dt.strftime("%Y-%m-%d"),
+            "predicted_delay": round(simple_forecast_val, 2),
+            "conf_int_lower": round(simple_forecast_val * 0.8, 2),
+            "conf_int_upper": round(simple_forecast_val * 1.2, 2),
+        }
+        for dt in forecast_dates
+    ]
 
+    if unreliable:
         return {
-            "error": f"Dados mensais insuficientes ({len(monthly_data.dropna())}) para análise ARMA. Mínimo: 15. Mostrando previsão baseada na média.",
+            "error": None,
+            "warning": warning,
+            "unreliable": True,
             "historical": historical_formatted,
             "forecast": forecast_simple,
             "model_used": "Média Simples (Fallback)",

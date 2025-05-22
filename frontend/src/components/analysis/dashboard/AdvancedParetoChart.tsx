@@ -74,7 +74,7 @@ const AdvancedParetoChart: React.FC<AdvancedParetoChartProps> = ({
   useEffect(() => {
     if (!safeFileId) return;
     api
-      .post("/scatter-data", { fileId: safeFileId })
+      .post("/api/scatter-data", { fileId: safeFileId })
       .then((res) => {
         const colNames = (res.data.columns || []).filter((name: string) => {
           const column = columns.find((col) => col.name === name);
@@ -100,7 +100,7 @@ const AdvancedParetoChart: React.FC<AdvancedParetoChartProps> = ({
   useEffect(() => {
     if (!safeFileId || !factor) return;
     api
-      .post("/scatter-factor-values", {
+      .post("/api/scatter-factor-values", {
         fileId: safeFileId,
         fator: factor,
       })
@@ -125,7 +125,7 @@ const AdvancedParetoChart: React.FC<AdvancedParetoChartProps> = ({
       };
 
       const result = (
-        await api.post("/analyze/pareto-advanced", requestBody)
+        await api.post("/api/analyze/pareto-advanced", requestBody)
       ).data;
 
       if (!result.pareto_principal)

@@ -300,7 +300,6 @@ const SeasonalityForecast: React.FC = () => {
           o melhor modelo (ARMA ou GLM).
         </CardDescription>
         <div className="flex flex-wrap gap-4 pt-4">
-          {/* Factor Selection */}
           <Select
             value={selectedFactor}
             onValueChange={(value) => {

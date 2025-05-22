@@ -40,7 +40,7 @@ def process_chunk(chunk: pd.DataFrame) -> List[Dict[str, Any]]:
 
 
 def parse_csv(
-    file_content: bytes, chunk_size: int = 10000
+    file_content: bytes, chunk_size: int = None  
 ) -> Generator[List[Dict[str, Any]], None, None]:
     encoding = detect_encoding(file_content)
 
@@ -53,27 +53,45 @@ def parse_csv(
     if not content:
         raise ValueError("Arquivo CSV vazio")
 
+
     lines = re.split(r"\r\n|\r|\n", content)
     lines = [line for line in lines if line.strip()]
 
     if len(lines) <= 1:
         raise ValueError("CSV contém apenas o cabeçalho ou está mal formatado")
 
+
     delimiter = detect_delimiter(lines[0])
 
     try:
+        
+        header_df = pd.read_csv(
+            io.StringIO('\n'.join(lines[:2])),  
+            delimiter=delimiter,
+            encoding=encoding,
+            engine="python",
+            nrows=1
+        )
+        
+        
+        dtype_dict = {col: str for col in header_df.columns}
+        
+        
         csv_io = io.StringIO(content, newline=None)
-        reader = pd.read_csv(
+        
+        
+        df = pd.read_csv(
             csv_io,
             delimiter=delimiter,
             encoding=encoding,
             engine="python",
             on_bad_lines="warn",
-            chunksize=chunk_size,
+            dtype=dtype_dict
         )
-        for chunk in reader:
-            records = process_chunk(chunk)
-            yield records
+        
+        
+        records = process_chunk(df)
+        yield records
 
     except Exception as e:
         raise ValueError(f"Erro ao ler CSV: {str(e)}")

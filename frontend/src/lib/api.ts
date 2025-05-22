@@ -5,11 +5,22 @@ const api = axios.create({
   baseURL: API_URL,
 });
 
-export { api };
+export { api, API_URL };
+
+
+export const uploadCSVFromDriveLink = async (link: string) => {
+  const res = await fetch(`${API_URL}/api/upload-from-link`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ url: link }),
+  });
+  if (!res.ok) throw new Error("Erro ao baixar o arquivo do Drive pelo backend");
+  return await res.json();
+};
 
 export const getForecast = async (params: URLSearchParams) => {
   try {
-    const response = await api.get(`/forecast?${params.toString()}`);
+    const response = await api.get(`/api/forecast?${params.toString()}`);
     return response.data;
   } catch (error) {
     if (axios.isAxiosError(error)) {
@@ -21,16 +32,20 @@ export const getForecast = async (params: URLSearchParams) => {
 
 export interface AnalyzeRequest {
   fileId: string;
+  dataset?: any[]; // Agora opcional
   columns: {
     name: string;
     role: "estimatedDate" | "actualDate" | "factor" | "delay";
+    type?: 'string' | 'number' | 'boolean' | 'date';
   }[];
   modelType?: string;
+  isPartial?: boolean;
+  isFinal?: boolean;
 }
 
 export const analyzeData = async (request: AnalyzeRequest) => {
   try {
-    const response = await api.post("/analyze", request);
+    const response = await api.post("/api/analyze", request);
     return response.data;
   } catch (error) {
     if (axios.isAxiosError(error)) {
@@ -53,7 +68,7 @@ export interface PredictRequest {
 
 export async function predictDelay(payload: PredictRequest) {
   try {
-    const response = await api.post("/predict", payload);
+    const response = await api.post("/api/predict", payload);
     return response.data;
   } catch (error) {
     if (axios.isAxiosError(error)) {
@@ -68,29 +83,59 @@ export interface ParseFileResponse {
     name: string;
     label: string;
     type: "date" | "number" | "string" | "boolean";
+    selected?: boolean;
+    isNumeric?: boolean;
+    role?: string;
   }[];
   chunked: boolean;
+  data?: any[];
+  fileId?: string;
+  totalRows?: number;
+  isPartialData?: boolean;
 }
+
+const CHUNK_SIZE = 5 * 1024 * 1024; 
 
 export const parseFile = async (file: File): Promise<ParseFileResponse> => {
   try {
     const formData = new FormData();
     formData.append("file", file);
-
-    const response = await api.post("/parseFile", formData, {
+    const response = await api.post("/api/parseFile", formData, {
       headers: {
         "Content-Type": "multipart/form-data",
       },
+      timeout: 300000, 
     });
-
-    return response.data;
+    if (!response.data) {
+      throw new Error('Resposta vazia do servidor');
+    }
+    
+    const result: ParseFileResponse = {
+      columns: Array.isArray(response.data.columns) ? response.data.columns : [],
+      chunked: Boolean(response.data.chunked),
+      data: Array.isArray(response.data.data) ? response.data.data : [],
+      fileId: response.data.fileId || `file_${Date.now()}`,
+      isPartialData: Boolean(response.data.chunked || response.data.isPartialData),
+      totalRows: response.data.totalRows || (Array.isArray(response.data.data) ? response.data.data.length : 0)
+    };
+    
+    if (!result.fileId) {
+      console.error('No fileId in response:', response.data);
+      throw new Error('ID do arquivo não retornado pelo servidor');
+    }
+return result;
   } catch (error) {
     if (axios.isAxiosError(error)) {
-      throw new Error(
-        error.response?.data?.error || "Erro ao processar arquivo"
-      );
+      const errorMessage = error.response?.data?.error || "Erro ao processar arquivo";
+      console.error('API Error:', {
+        status: error.response?.status,
+        data: error.response?.data,
+        message: error.message
+      });
+      throw new Error(errorMessage);
     }
-    throw error;
+    console.error('Unexpected error:', error);
+    throw new Error("Erro inesperado ao processar o arquivo");
   }
 };
 
@@ -99,21 +144,11 @@ export interface ChunkResponse {
   hasMore: boolean;
 }
 
-export const getChunk = async (
-  file: File,
-  chunkIndex: number
-): Promise<ChunkResponse> => {
+export const getChunk = async (fileId: string, chunkIndex: number): Promise<ChunkResponse> => {
   try {
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("chunk_index", chunkIndex.toString());
-
-    const response = await api.post("/getChunk", formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
+    const response = await api.get(`/getChunk/${fileId}/${chunkIndex}`, {
+      timeout: 300000, 
     });
-
     return response.data;
   } catch (error) {
     if (axios.isAxiosError(error)) {

@@ -27,7 +27,6 @@ def parse_file_route():
         file_id = f"{uuid.uuid4()}_{secure_filename(file.filename)}"
         file_content_bytes = file.read()
         file.seek(0)
-
         saved_path, save_error = save_uploaded_file(file, file_id)
         if save_error:
             return jsonify({"error": save_error}), 500
@@ -41,7 +40,7 @@ def parse_file_route():
 
             cleaned_first_chunk = []
             if isinstance(first_chunk, list):
-                for row in first_chunk:
+                for row in first_chunk[:10]:
                     cleaned_row = (
                         {
                             key: (None if pd.isna(value) else value)

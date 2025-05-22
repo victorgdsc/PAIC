@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useData } from "@/context/DataContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,124 +6,192 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { ArrowRight, CalendarCheck, CalendarClock, TableProperties, CheckCircle2, PlusCircle, X } from "lucide-react";
 import { TEST_CONFIG } from "@/config/testConfig";
+import { DataColumn } from "@/lib/types";
 
-const ColumnMapping: React.FC = () => {
+type ColumnRole = "estimatedDate" | "actualDate" | "factor" | "delay" | undefined;
+
+interface ColumnMappingProps {
+  
+}
+
+const ColumnMapping: React.FC<ColumnMappingProps> = () => {
+  
+  const normalizeColumnName = (name: string): string =>
+    name.trim().toLowerCase().replace(/[^a-z0-9]/gi, "");
   const {
-    columns,
+    columns: allColumns = [],
     updateColumnRole,
-    updateColumnNumeric,
-    runAnalysis,
-    isLoading,
+    updateNumericColumns,
+    analyzeData,
+    isLoading = false,
   } = useData();
+  
+  
   const [selectedFactors, setSelectedFactors] = useState<string[]>([]);
   const [activeFactors, setActiveFactors] = useState<boolean[]>([]);
 
   useEffect(() => {
+    const backendFactors = allColumns.filter(col => col.role === 'factor').map(col => col.originalName ?? col.name);
     if (
-      !TEST_CONFIG.AUTO_MAP_FIXED_FACTORS ||
-      columns.length === 0 ||
-      selectedFactors.length > 0
-    )
-      return;
-    const fixedFactors = [
-      "Country",
-      "Product Group",
-      "Shipment Mode",
-      "Weight (Kilograms)",
-    ];
-    fixedFactors.forEach((col) => {
-      updateColumnRole(col, "factor");
-      if (col.toLowerCase().includes("weight")) {
-        updateColumnNumeric(col, true);
-      }
-    });
-    setSelectedFactors(fixedFactors);
-  }, [columns]);
-
-  useEffect(() => {
-    setActiveFactors(selectedFactors.map(() => false));
-  }, [selectedFactors.length]);
-
-  const handleRoleChange = (
-    columnName: string,
-    role?: "estimatedDate" | "actualDate" | "factor" | "delay"
-  ) => {
-    updateColumnRole(columnName, role);
-  };
-
-  const addFactorColumn = () => {
-    setSelectedFactors([...selectedFactors, ""]);
-  };
-
-  const removeFactorColumn = (index: number) => {
-    const columnToRemove = selectedFactors[index];
-    if (columnToRemove) {
-      handleRoleChange(columnToRemove, undefined);
+      backendFactors.length > 0 &&
+      (backendFactors.length !== selectedFactors.length || backendFactors.some((f, i) => f !== selectedFactors[i]))
+    ) {
+      setSelectedFactors(backendFactors);
+      setActiveFactors(Array(backendFactors.length).fill(false));
     }
-    const updatedFactors = [...selectedFactors];
-    updatedFactors.splice(index, 1);
-    setSelectedFactors(updatedFactors);
-  };
-
-  const updateFactorColumn = (index: number, columnName: string) => {
-    const previousColumn = selectedFactors[index];
-    if (previousColumn) {
-      handleRoleChange(previousColumn, undefined);
-    }
-
-    const updatedFactors = [...selectedFactors];
-    updatedFactors[index] = columnName;
-    setSelectedFactors(updatedFactors);
-
-    handleRoleChange(columnName, "factor");
-
-    const isWeightColumn =
-      TEST_CONFIG.AUTO_MAP_FIXED_FACTORS &&
-      columnName.toLowerCase().includes("weight");
-
-    if (isWeightColumn) {
-      updateColumnNumeric(columnName, true);
-      setActiveFactors((prev) => {
-        const updated = [...prev];
-        updated[index] = true;
-        return updated;
-      });
-    } else {
-      setActiveFactors((prev) => {
-        const updated = [...prev];
-        updated[index] = updated[index] ?? false;
-        return updated;
-      });
-    }
-  };
-
-  const getAvailableColumns = (currentColumn?: string) => {
-    return columns.filter(
-      (col) =>
-        col.name === currentColumn ||
-        (col.role === undefined && !selectedFactors.includes(col.name))
-    );
-  };
-
-  const estimatedDateColumn = columns.find(
-    (col) => col.role === "estimatedDate"
+  }, [allColumns]);
+  
+  
+  const availableColumns = useMemo(() => {
+    return allColumns.filter(col => !selectedFactors.includes(col.originalName ?? col.name));
+  }, [allColumns, selectedFactors]);
+  
+  
+  
+  const estimatedDateColumn = useMemo(() => 
+    allColumns.find((col) => col.role === "estimatedDate"),
+    [allColumns]
   );
-  const actualDateColumn = columns.find((col) => col.role === "actualDate");
-  const canRunAnalysis = estimatedDateColumn && actualDateColumn;
+  
+  const actualDateColumn = useMemo(() => 
+    allColumns.find((col) => col.role === "actualDate"),
+    [allColumns]
+  );
+  
+  const canRunAnalysis = useMemo(() => 
+    estimatedDateColumn && actualDateColumn,
+    [estimatedDateColumn, actualDateColumn]
+  );
 
-  const handleToggleActiveFactor = (index: number) => {
-    setActiveFactors((prev) => {
-      const updated = [...prev];
-      const newValue = !(updated[index] ?? false);
-      updated[index] = newValue;
+  
+  const { selectedExampleFile } = useData();
 
-      const columnName = selectedFactors[index];
-      if (columnName) {
-        updateColumnNumeric(columnName, newValue);
+  
+
+
+  
+  const handleRoleChange = useCallback((
+    columnName: string,
+    role?: ColumnRole
+  ) => {
+    const column = allColumns.find(col => col.originalName ?? col.name === columnName);
+    if (!column) return;
+    
+    
+    if (column.role === role) return;
+    
+    
+    if (column.role) {
+      
+      if (column.role === 'factor') {
+        setSelectedFactors(prev => prev.filter(name => name !== columnName));
+        setActiveFactors(prev => {
+          const index = selectedFactors.indexOf(columnName);
+          if (index === -1) return prev;
+          return prev.filter((_, i) => i !== index);
+        });
       }
+      updateColumnRole(columnName, undefined);
+    }
+    
+    
+    if (role) {
+      updateColumnRole(columnName, role);
+      
+      
+      if (role === 'factor' && !selectedFactors.includes(columnName)) {
+        setSelectedFactors(prev => [...prev, columnName]);
+        setActiveFactors(prev => [...prev, false]);
+      }
+    }
+  }, [allColumns, selectedFactors, updateColumnRole]);
 
+  
+  const addFactorColumn = useCallback(() => {
+  setSelectedFactors(prev => [...prev, ""]);
+  setActiveFactors(prev => [...prev, false]);
+}, []);
+
+  
+  const removeFactorColumn = useCallback((index: number) => {
+  setSelectedFactors(prev => {
+    const removed = prev[index];
+    if (removed && removed !== "") {
+      updateColumnRole(removed, undefined);
+    }
+    const updated = [...prev];
+    updated.splice(index, 1);
+    return updated;
+  });
+  setActiveFactors(prev => {
+    const updated = [...prev];
+    updated.splice(index, 1);
+    return updated;
+  });
+}, [updateColumnRole]);
+
+  const updateFactorColumn = useCallback((index: number, columnName: string) => {
+  const previousColumn = selectedFactors[index];
+  if (previousColumn === columnName) return;
+  if (previousColumn && previousColumn !== "") {
+    updateColumnRole(previousColumn, undefined);
+  }
+  setSelectedFactors(prev => {
+    const updated = [...prev];
+    updated[index] = columnName;
+    return updated;
+  });
+  if (columnName !== "") {
+    updateColumnRole(columnName, 'factor');
+    const normalizedColumnName = columnName.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const isNumeric = normalizedColumnName.includes('weight') || 
+                     normalizedColumnName.includes('quantidade') ||
+                     normalizedColumnName.includes('valor') ||
+                     normalizedColumnName.includes('price') ||
+                     normalizedColumnName.includes('cost') ||
+                     normalizedColumnName.includes('value');
+    setActiveFactors(prev => {
+      const updated = [...prev];
+      updated[index] = isNumeric;
       return updated;
     });
+    updateNumericColumns([columnName], isNumeric);
+  }
+}, [selectedFactors, updateColumnRole, updateNumericColumns]);
+
+  const getAvailableColumns = useCallback((currentColumn?: string) => {
+    return allColumns.filter(col => {
+      
+      if (col.originalName ?? (col.originalName ?? col.name) === currentColumn) return true;
+      
+      
+      if (col.role === undefined) return true;
+      
+      
+      if (col.role === 'factor' && selectedFactors.includes(col.originalName ?? col.name)) return true;
+      
+      return false;
+    });
+  }, [allColumns, selectedFactors]);
+
+  
+  const handleToggleActiveFactor = (index: number) => {
+    const columnName = selectedFactors[index];
+    if (!columnName) return;
+    
+    
+    const currentStatus = activeFactors[index] ?? false;
+    const newStatus = !currentStatus;
+    
+    
+    setActiveFactors(prev => {
+      const updated = [...prev];
+      updated[index] = newStatus;
+      return updated;
+    });
+    
+    
+    updateNumericColumns([columnName], newStatus);
   };
 
   return (
@@ -164,29 +232,34 @@ const ColumnMapping: React.FC = () => {
                     )}
                   </div>
                   <Select
-                    onValueChange={(value) =>
-                      handleRoleChange(value, "estimatedDate")
-                    }
-                    value={estimatedDateColumn?.name || ""}
-                    disabled={isLoading}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Selecione a coluna de data estimada" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {columns
-                        .filter(
-                          (col) =>
-                            col.role === undefined ||
-                            col.role === "estimatedDate"
-                        )
-                        .map((column) => (
-                          <SelectItem key={column.name} value={column.name}>
-                            {column.label}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
+  onValueChange={(value) => {
+    if (estimatedDateColumn && estimatedDateColumn.name !== value) {
+      updateColumnRole(estimatedDateColumn.name, undefined);
+    }
+    handleRoleChange(value, "estimatedDate");
+  }}
+  value={estimatedDateColumn?.name || ""}
+  disabled={isLoading}
+>
+  <SelectTrigger className="w-full">
+    <SelectValue placeholder="Selecione a coluna de data estimada" />
+  </SelectTrigger>
+  <SelectContent>
+    {allColumns
+      .filter(col => {
+        const colName = col.originalName ?? col.name;
+        const inUse =
+          (actualDateColumn && actualDateColumn.name === colName) ||
+          selectedFactors.includes(colName);
+        return col.role === undefined || col.role === "estimatedDate" || (estimatedDateColumn && estimatedDateColumn.name === colName);
+      })
+      .map((column) => (
+        <SelectItem key={column.name} value={column.name}>
+          {column.label}
+        </SelectItem>
+      ))}
+  </SelectContent>
+</Select>
                 </div>
                 <div className="border rounded-md p-4 bg-muted/20">
                   <div className="flex items-center justify-between mb-3">
@@ -206,9 +279,12 @@ const ColumnMapping: React.FC = () => {
                     )}
                   </div>
                   <Select
-                    onValueChange={(value) =>
-                      handleRoleChange(value, "actualDate")
-                    }
+                    onValueChange={(value) => {
+                      if (actualDateColumn && actualDateColumn.name !== value) {
+                        updateColumnRole(actualDateColumn.name, undefined);
+                      }
+                      handleRoleChange(value, "actualDate");
+                    }}
                     value={actualDateColumn?.name || ""}
                     disabled={isLoading}
                   >
@@ -216,11 +292,14 @@ const ColumnMapping: React.FC = () => {
                       <SelectValue placeholder="Selecione a coluna de data real" />
                     </SelectTrigger>
                     <SelectContent>
-                      {columns
-                        .filter(
-                          (col) =>
-                            col.role === undefined || col.role === "actualDate"
-                        )
+                      {allColumns
+                        .filter(col => {
+                          const colName = col.originalName ?? col.name;
+                          const inUse =
+                            (estimatedDateColumn && estimatedDateColumn.name === colName) ||
+                            selectedFactors.includes(colName);
+                          return col.role === undefined || col.role === "actualDate" || (actualDateColumn && actualDateColumn.name === colName);
+                        })
                         .map((column) => (
                           <SelectItem key={column.name} value={column.name}>
                             {column.label}
@@ -241,48 +320,59 @@ const ColumnMapping: React.FC = () => {
                 {selectedFactors.filter(Boolean).length} fatores selecionados
               </span>
             </div>
-            <div className="space-y-3">
-              {selectedFactors.map((factorColumn, index) => (
-                <div key={index} className="flex items-center gap-2">
-                  <div className="flex-1">
-                    <Select
-                      onValueChange={(value) =>
-                        updateFactorColumn(index, value)
-                      }
-                      value={factorColumn}
-                      disabled={isLoading}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Selecione uma coluna de fator" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {getAvailableColumns(factorColumn).map((column) => (
-                          <SelectItem key={column.name} value={column.name}>
-                            {column.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <label className="flex items-center gap-1 text-xs cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={activeFactors[index] ?? false}
-                      onChange={() => handleToggleActiveFactor(index)}
-                      className="accent-primary h-4 w-4"
-                    />
-                    Numérico?
-                  </label>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => removeFactorColumn(index)}
-                    disabled={isLoading}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
+             <div className="space-y-3">
+              {selectedFactors.map((factor, index) => (
+  <div key={index} className="flex items-center gap-2">
+    <div className="flex-1">
+      <Select
+        onValueChange={(value) => updateFactorColumn(index, value)}
+        value={factor || ""}
+        disabled={isLoading}
+      >
+        <SelectTrigger className="w-full">
+          <SelectValue placeholder="Selecione uma coluna de fator" />
+        </SelectTrigger>
+        <SelectContent>
+          {allColumns
+  .filter(c => {
+    const colName = c.originalName ?? c.name;
+    const inUse =
+      (estimatedDateColumn && estimatedDateColumn.name === colName) ||
+      (actualDateColumn && actualDateColumn.name === colName) ||
+      (selectedFactors.some((f, i) => f === colName && i !== index));
+    return !inUse || (factor && colName === factor);
+  })
+  .map((column) => (
+    <SelectItem key={column.name} value={column.name}>
+      {column.label}
+    </SelectItem>
+  ))
+}</SelectContent>
+      </Select>
+    </div>
+    {factor && (
+      <label className="flex items-center gap-1 text-xs cursor-pointer select-none">
+        <input
+          type="checkbox"
+          checked={!!allColumns.find(c => (c.originalName ?? c.name) === factor)?.isNumeric}
+          onChange={() => updateNumericColumns([factor],
+            !allColumns.find(c => (c.originalName ?? c.name) === factor)?.isNumeric
+          )}
+          className="accent-primary h-4 w-4"
+        />
+        Numérico?
+      </label>
+    )}
+    <Button
+      variant="ghost"
+      size="icon"
+      onClick={() => removeFactorColumn(index)}
+      disabled={isLoading}
+    >
+      <X className="h-4 w-4" />
+    </Button>
+  </div>
+))}
               <Button
                 variant="outline"
                 className="w-full"
@@ -338,7 +428,7 @@ const ColumnMapping: React.FC = () => {
           )}
         </CardContent>
         <CardFooter className="flex justify-end">
-          <Button onClick={runAnalysis} disabled={isLoading || !canRunAnalysis}>
+          <Button onClick={analyzeData} disabled={isLoading}>
             {isLoading ? (
               <>
                 <svg

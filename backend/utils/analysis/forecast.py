@@ -89,12 +89,11 @@ def _run_arma_model(
     }
 
     if len(df_monthly) < MIN_DATA_POINTS_FOR_TIMESERIES:
-        result["error"] = "Dados insuficientes"
         result["warning"] = (
-            f"ARMA requer pelo menos {MIN_DATA_POINTS_FOR_TIMESERIES} pontos mensais (encontrados {len(df_monthly)})."
+            f"Forecast NÃO CONFIÁVEL: ARMA requer pelo menos {MIN_DATA_POINTS_FOR_TIMESERIES} pontos mensais (encontrados {len(df_monthly)}). Previsão gerada, mas pode não ser confiável."
         )
-
-        return result
+        result["unreliable"] = True
+        
 
     try:
         with warnings.catch_warnings():
