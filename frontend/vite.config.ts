@@ -14,6 +14,7 @@ export default defineConfig(({ mode }) => ({
     postcss: {
       plugins: [tailwindcss()],
     },
+  }
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
