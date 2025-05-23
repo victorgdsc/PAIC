@@ -33,6 +33,59 @@ const FileUpload: React.FC<FileUploadProps> = ({ onSuccess }) => {
   const [selectedExample, setSelectedExample] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
+  // Função para upload grande via GCS
+  const uploadLargeFileToGCS = async (file: File) => {
+    setIsUploading(true);
+    setUploadProgress(0);
+    try {
+      // 1. Solicitar signed URL ao backend
+      const resUrl = await fetch(
+        'https://paic-backend-3711168006.us-central1.run.app/api/generate-upload-url',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ file_name: file.name })
+        }
+      );
+      if (!resUrl.ok) throw new Error('Erro ao obter URL de upload');
+      const { url } = await resUrl.json();
+
+      // 2. Upload direto para o GCS
+      const uploadRes = await fetch(url, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/octet-stream' },
+        body: file,
+      });
+      if (!uploadRes.ok) throw new Error('Erro ao fazer upload para o GCS');
+
+      // 3. Notificar backend
+      const notifyRes = await fetch(
+        'https://paic-backend-3711168006.us-central1.run.app/api/notify-upload-complete',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ file_name: file.name })
+        }
+      );
+      const notifyMsg = await notifyRes.json();
+      toast.success(notifyMsg.message || 'Upload e notificação concluídos!');
+      if (typeof setFileInfo === 'function') setFileInfo({
+        name: file.name,
+        type: file.type,
+        size: file.size,
+        fileId: file.name,
+        totalRows: undefined,
+        isPartialData: false,
+      });
+      if (onSuccess) onSuccess();
+    } catch (error: any) {
+      toast.error(error?.message || 'Erro no upload grande');
+    } finally {
+      setIsUploading(false);
+      setUploadProgress(100);
+    }
+  };
+
   const validateFile = (file: File): boolean => {
     const fileType = file.name.split(".").pop()?.toLowerCase() || "";
     const validTypes = ["csv", "xls", "xlsx"];
@@ -128,11 +181,11 @@ const FileUpload: React.FC<FileUploadProps> = ({ onSuccess }) => {
         const file = e.dataTransfer.files[0];
         if (validateFile(file)) {
           simulateUploadProgress();
-          handleFileUpload(file);
+          uploadLargeFileToGCS(file);
         }
       }
     },
-    [handleFileUpload]
+    []
   );
 
   const onDragOver = useCallback(
@@ -156,12 +209,12 @@ const FileUpload: React.FC<FileUploadProps> = ({ onSuccess }) => {
       const file = e.target.files[0];
       if (validateFile(file)) {
         simulateUploadProgress();
-        handleFileUpload(file).then(() => {
+        uploadLargeFileToGCS(file).then(() => {
           if (onSuccess) onSuccess();
         });
       }
     }
-  }, [handleFileUpload]);
+  }, [onSuccess]);
 
   const formatFileSize = (bytes: number): string => {
     if (bytes < 1024) return `${bytes} B`;
