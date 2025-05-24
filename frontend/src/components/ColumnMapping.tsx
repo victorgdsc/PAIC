@@ -255,7 +255,7 @@ const ColumnMapping: React.FC<ColumnMappingProps> = () => {
       })
       .map((column) => (
         <SelectItem key={column.name} value={column.name}>
-          {column.label}
+          {column.name}
         </SelectItem>
       ))}
   </SelectContent>
@@ -302,7 +302,7 @@ const ColumnMapping: React.FC<ColumnMappingProps> = () => {
                         })
                         .map((column) => (
                           <SelectItem key={column.name} value={column.name}>
-                            {column.label}
+                            {column.name}
                           </SelectItem>
                         ))}
                     </SelectContent>
@@ -344,7 +344,7 @@ const ColumnMapping: React.FC<ColumnMappingProps> = () => {
   })
   .map((column) => (
     <SelectItem key={column.name} value={column.name}>
-      {column.label}
+      {column.name}
     </SelectItem>
   ))
 }</SelectContent>

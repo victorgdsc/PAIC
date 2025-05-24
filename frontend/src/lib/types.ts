@@ -37,6 +37,12 @@ export interface AnalysisResult {
   modelType?: string;
   error?: string;
   totalRows: number;
+  statusCounts?: {
+    antecipadas: number;
+    noPrazo: number;
+    atrasadas: number;
+  };
+  totalDeliveries?: number;
 }
 
 export interface FactorAnalysis {

@@ -15,6 +15,8 @@ interface FileUploadProps {
   onSuccess?: () => void;
 }
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 const FileUpload: React.FC<FileUploadProps> = ({ onSuccess }) => {
   const {
     handleFileUpload,
@@ -33,14 +35,12 @@ const FileUpload: React.FC<FileUploadProps> = ({ onSuccess }) => {
   const [selectedExample, setSelectedExample] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
-  // Função para upload grande via GCS
   const uploadLargeFileToGCS = async (file: File) => {
     setIsUploading(true);
     setUploadProgress(0);
     try {
-      // 1. Solicitar signed URL ao backend
       const resUrl = await fetch(
-        'https://paic-backend-3711168006.us-central1.run.app/api/generate-upload-url',
+        `${API_URL}/api/generate-upload-url`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -50,7 +50,6 @@ const FileUpload: React.FC<FileUploadProps> = ({ onSuccess }) => {
       if (!resUrl.ok) throw new Error('Erro ao obter URL de upload');
       const { url } = await resUrl.json();
 
-      // 2. Upload direto para o GCS
       const uploadRes = await fetch(url, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/octet-stream' },
@@ -58,9 +57,8 @@ const FileUpload: React.FC<FileUploadProps> = ({ onSuccess }) => {
       });
       if (!uploadRes.ok) throw new Error('Erro ao fazer upload para o GCS');
 
-      // 3. Notificar backend
       const notifyRes = await fetch(
-        'https://paic-backend-3711168006.us-central1.run.app/api/notify-upload-complete',
+        `${API_URL}/api/notify-upload-complete`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -68,6 +66,20 @@ const FileUpload: React.FC<FileUploadProps> = ({ onSuccess }) => {
         }
       );
       const notifyMsg = await notifyRes.json();
+      if (notifyMsg.columns) {
+        setColumns(notifyMsg.columns.map((col: string) => ({
+          name: col,
+          role: undefined,
+          isNumeric: false,
+          originalName: col
+        })));
+        setAllColumns(notifyMsg.columns.map((col: string) => ({
+          name: col,
+          role: undefined,
+          isNumeric: false,
+          originalName: col
+        })));
+      }
       toast.success(notifyMsg.message || 'Upload e notificação concluídos!');
       if (typeof setFileInfo === 'function') setFileInfo({
         name: file.name,
@@ -118,27 +130,45 @@ const FileUpload: React.FC<FileUploadProps> = ({ onSuccess }) => {
       setIsUploading(true);
       setSelectedExample(exampleFile.id);
 
-      const userId = getUserId();
-      const dest_blob_name = `user_uploads/${userId}/${exampleFile.path.split('/').pop()}`;
-      const copyRes = await fetch('https://paic-backend-3711168006.us-central1.run.app/api/copy-sample-in-gcs', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sample_blob_name: exampleFile.path,
-          dest_blob_name
-        })
-      });
-      if (!copyRes.ok) throw new Error('Erro ao copiar sample no bucket');
-      const copyData = await copyRes.json();
-      const newBlobName = copyData.new_blob_name || dest_blob_name;
-
-      const notifyRes = await fetch('https://paic-backend-3711168006.us-central1.run.app/api/notify-upload-complete', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ file_name: newBlobName })
-      });
-      const notifyMsg = await notifyRes.json();
-      toast.success(notifyMsg.message || 'Arquivo de exemplo copiado e pronto para processamento!');
+      let columns: string[] = [];
+      if (!exampleFile.columns) {
+        const columnsRes = await fetch(`${API_URL}/api/get-columns`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fileId: exampleFile.path })
+        });
+        if (columnsRes.ok) {
+          const columnsData = await columnsRes.json();
+          columns = columnsData.columns || [];
+        }
+      } else {
+        columns = exampleFile.columns as string[];
+      }
+      const copyData = {
+        columns,
+        fileId: exampleFile.path
+      };
+      if (copyData.columns) {
+        let mappedColumns = copyData.columns.map((col: string) => {
+          let role: string | undefined = undefined;
+          let isNumeric = false;
+          if (exampleFile.columnMapping && exampleFile.columnMapping[col]) {
+            role = exampleFile.columnMapping[col];
+          }
+          if (exampleFile.numericColumns && exampleFile.numericColumns.includes(col)) {
+            isNumeric = true;
+          }
+          return {
+            name: col,
+            role,
+            isNumeric,
+            originalName: col
+          };
+        });
+        setColumns(mappedColumns);
+        setAllColumns(mappedColumns);
+      }
+      const newBlobName = copyData.fileId;
 
       if (typeof setFileInfo === 'function') setFileInfo({
         name: exampleFile.name,

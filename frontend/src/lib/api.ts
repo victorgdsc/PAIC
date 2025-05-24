@@ -32,7 +32,7 @@ export const getForecast = async (params: URLSearchParams) => {
 
 export interface AnalyzeRequest {
   fileId: string;
-  dataset?: any[]; // Agora opcional
+  dataset?: any[];
   columns: {
     name: string;
     role: "estimatedDate" | "actualDate" | "factor" | "delay";

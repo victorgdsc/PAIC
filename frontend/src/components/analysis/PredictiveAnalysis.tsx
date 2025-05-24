@@ -1,8 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useData } from "@/context/DataContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { predictDelay, PredictRequest } from "@/lib/api";
+import { predictDelay, PredictRequest, api } from "@/lib/api";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -22,18 +22,37 @@ const PredictiveAnalysis: React.FC = () => {
   const [factorValues, setFactorValues] = useState<Record<string, string>>({});
   const [predictionResult, setPredictionResult] =
     useState<PredictionResult | null>(null);
+  const [availableFactorValues, setAvailableFactorValues] = useState<Record<string, string[]>>({});
 
   const factorColumns = columns.filter((col) => col.role === "factor");
 
-  const getUniqueValuesForFactor = (factorName: string) => {
-    const uniqueValues = new Set<string>();
+  useEffect(() => {
+    const fetchValues = async () => {
+      for (const factor of columns.filter(col => col.role === "factor" && !col.isNumeric)) {
+        try {
+          const res = await api.post('/api/forecast-factor-values', {
+            fileId: fileInfo?.fileId,
+            fator: factor.name,
+          });
+          setAvailableFactorValues(prev => {
+            if (JSON.stringify(prev[factor.name]) !== JSON.stringify(res.data.values || [])) {
+              return { ...prev, [factor.name]: res.data.values || [] };
+            }
+            return prev;
+          });
+        } catch {
+          setAvailableFactorValues(prev => ({
+            ...prev,
+            [factor.name]: [],
+          }));
+        }
+      }
+    };
+    if (fileInfo?.fileId) {
+      fetchValues();
+    }
+  }, [fileInfo?.fileId, columns]);
 
-    rawData.forEach((row) => {
-      uniqueValues.add(String(row[factorName]));
-    });
-
-    return Array.from(uniqueValues);
-  };
 
   const handleFactorInputChange = (factorName: string, value: string) => {
     setFactorValues((prev) => ({ ...prev, [factorName]: value }));
@@ -131,16 +150,16 @@ const PredictiveAnalysis: React.FC = () => {
                   </p>
                 </div>
 
-                {factorColumns.map((factor) => {
+                {factorColumns.filter(factor => !!factor.name).map((factor) => {
                   const isNumeric = factor.isNumeric === true;
 
                   return (
                     <div key={factor.name}>
-                      <Label className="text-sm">{factor.label}</Label>
+                      <Label className="text-sm">{factor.name}</Label>
                       {isNumeric ? (
                         <Input
                           type="number"
-                          placeholder={`Digite um valor para ${factor.label}`}
+                          placeholder={`Digite um valor para ${factor.name}`}
                           className="mt-1"
                           value={factorValues[factor.name] || ""}
                           onChange={(e) =>
@@ -156,11 +175,11 @@ const PredictiveAnalysis: React.FC = () => {
                         >
                           <SelectTrigger className="w-full mt-1">
                             <SelectValue
-                              placeholder={`Selecione ${factor.label}`}
+                              placeholder={`Selecione ${factor.name}`}
                             />
                           </SelectTrigger>
                           <SelectContent>
-                            {getUniqueValuesForFactor(factor.name).map(
+                            {(availableFactorValues[factor.name] || []).map(
                               (value) => (
                                 <SelectItem key={value} value={value}>
                                   {value}

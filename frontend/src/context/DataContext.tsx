@@ -25,6 +25,8 @@ interface FileInfo {
 
 import { TEST_CONFIG, ExampleFile } from "@/config/testConfig";
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 interface DataContextType {
   columns: DataColumn[];
   allColumns: DataColumn[];

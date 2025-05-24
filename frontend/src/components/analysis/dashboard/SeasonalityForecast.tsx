@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { getForecast } from "@/lib/api";
+import { getForecast, api } from "@/lib/api";
 import { Loader2, AlertCircle, CheckCircle, TrendingUp } from "lucide-react";
 
 const API_URL = import.meta.env.VITE_API_URL;
@@ -45,6 +45,7 @@ const SeasonalityForecast: React.FC = () => {
   const { getFactorValueMap, fileInfo, columns } = useData();
   const [selectedFactor, setSelectedFactor] = useState<string>("overall");
   const [selectedValue, setSelectedValue] = useState<string>("");
+  const [factorValues, setFactorValues] = useState<string[]>([]); // NEW STATE
   const [forecastData, setForecastData] = useState<ForecastApiResponse | null>(
     null
   );
@@ -54,15 +55,13 @@ const SeasonalityForecast: React.FC = () => {
 
   const factors = useMemo(() => getFactorValueMap(), [getFactorValueMap]);
   const factorOptions = useMemo(() => Object.keys(factors || {}), [factors]);
+
   const valueOptions = useMemo(() => {
-    if (selectedFactor === "overall" || !factors || !factors[selectedFactor]) {
+    if (selectedFactor === "overall" || !factorValues) {
       return [];
     }
-    const uniqueValues = factors[selectedFactor];
-    return uniqueValues.length > 100
-      ? uniqueValues.slice(0, 100)
-      : uniqueValues;
-  }, [selectedFactor, factors]);
+    return factorValues.length > 100 ? factorValues.slice(0, 100) : factorValues;
+  }, [selectedFactor, factorValues]);
 
   const getIsNumeric = (factorName: string) => {
     const col = Object.keys(factors).find((c) => c === factorName);
@@ -77,6 +76,28 @@ const SeasonalityForecast: React.FC = () => {
       setIsWaitingForFileId(true);
     }
   }, [fileInfo?.fileId]);
+
+  useEffect(() => {
+    const fetchFactorValues = async () => {
+      if (!fileInfo?.fileId || selectedFactor === "overall" || getIsNumeric(selectedFactor)) {
+        setFactorValues([]);
+        setSelectedValue("");
+        return;
+      }
+      try {
+        const res = await api.post('/api/forecast-factor-values', {
+          fileId: fileInfo.fileId,
+          fator: selectedFactor
+        });
+        setFactorValues(res.data.values || []);
+        setSelectedValue("");
+      } catch (err) {
+        setFactorValues([]);
+        setSelectedValue("");
+      }
+    };
+    fetchFactorValues();
+  }, [selectedFactor, fileInfo?.fileId]);
 
   useEffect(() => {
     const fetchForecast = async () => {
@@ -283,10 +304,16 @@ const SeasonalityForecast: React.FC = () => {
               </SelectItem>
             ))}
           </SelectContent>
+          {valueOptions.length === 0 && (
+            <div style={{ color: '#888', fontSize: 12, padding: '4px 8px' }}>
+              Nenhum valor disponível
+            </div>
+          )}
         </Select>
       </div>
     );
   };
+
 
   return (
     <Card>

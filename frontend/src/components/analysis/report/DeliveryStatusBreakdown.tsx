@@ -6,48 +6,19 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recha
 const RADIAN = Math.PI / 180;
 
 const DeliveryStatusBreakdown: React.FC = () => {
-  const { rawData, columns } = useData();
+  const { analysisResult } = useData();
 
-  const prepareStatusData = () => {
-    const early = rawData.filter((row) => {
-      const estimatedDateCol = columns.find(
-        (col) => col.role === "estimatedDate"
-      );
-      const actualDateCol = columns.find((col) => col.role === "actualDate");
-      if (!estimatedDateCol || !actualDateCol) return false;
+  if (!analysisResult || !analysisResult.statusCounts) {
+    return <div>Dados de status das entregas não disponíveis.</div>;
+  }
 
-      const estimatedDate = new Date(row[estimatedDateCol.name] as string);
-      const actualDate = new Date(row[actualDateCol.name] as string);
+  const statusData = [
+    { name: "Antecipadas", value: analysisResult.statusCounts.antecipadas, color: "#10B981" },
+    { name: "No Prazo", value: analysisResult.statusCounts.noPrazo, color: "#F59E0B" },
+    { name: "Atrasadas", value: analysisResult.statusCounts.atrasadas, color: "#EF4444" },
+  ];
 
-      return actualDate < estimatedDate;
-    }).length;
-
-    const onTime = rawData.filter((row) => {
-      const estimatedDateCol = columns.find(
-        (col) => col.role === "estimatedDate"
-      );
-      const actualDateCol = columns.find((col) => col.role === "actualDate");
-      if (!estimatedDateCol || !actualDateCol) return false;
-
-      const estimatedDate = new Date(row[estimatedDateCol.name] as string);
-      const actualDate = new Date(row[actualDateCol.name] as string);
-
-      estimatedDate.setHours(0, 0, 0, 0);
-      actualDate.setHours(0, 0, 0, 0);
-
-      return actualDate.getTime() === estimatedDate.getTime();
-    }).length;
-
-    const late = rawData.length - early - onTime;
-
-    return [
-      { name: "Antecipadas", value: early, color: "#10B981" },
-      { name: "No Prazo", value: onTime, color: "#F59E0B" },
-      { name: "Atrasadas", value: late, color: "#EF4444" },
-    ];
-  };
-
-  const statusData = prepareStatusData();
+  const total = analysisResult.totalDeliveries;
 
   const renderCustomizedLabel = ({
     cx,
@@ -115,7 +86,7 @@ const DeliveryStatusBreakdown: React.FC = () => {
                 <span className="font-medium">Entregas Antecipadas: </span>
                 <span>
                   {statusData[0].value} (
-                  {((statusData[0].value / rawData.length) * 100).toFixed(1)}%)
+                  {((statusData[0].value / total) * 100).toFixed(1)}%)
                 </span>
               </div>
             </div>
@@ -125,7 +96,7 @@ const DeliveryStatusBreakdown: React.FC = () => {
                 <span className="font-medium">Entregas No Prazo: </span>
                 <span>
                   {statusData[1].value} (
-                  {((statusData[1].value / rawData.length) * 100).toFixed(1)}%)
+                  {((statusData[1].value / total) * 100).toFixed(1)}%)
                 </span>
               </div>
             </div>
@@ -135,7 +106,7 @@ const DeliveryStatusBreakdown: React.FC = () => {
                 <span className="font-medium">Entregas Atrasadas: </span>
                 <span>
                   {statusData[2].value} (
-                  {((statusData[2].value / rawData.length) * 100).toFixed(1)}%)
+                  {((statusData[2].value / total) * 100).toFixed(1)}%)
                 </span>
               </div>
             </div>
