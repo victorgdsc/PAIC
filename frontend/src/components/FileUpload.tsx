@@ -109,46 +109,45 @@ const FileUpload: React.FC<FileUploadProps> = ({ onSuccess }) => {
 
   const navigate = useNavigate();
 
+  const getUserId = () => {
+    return localStorage.getItem('user_id') || 'demo-user';
+  };
+
   const handleExampleSelect = async (exampleFile: ExampleFile) => {
     try {
       setIsUploading(true);
       setSelectedExample(exampleFile.id);
 
+      const userId = getUserId();
+      const dest_blob_name = `user_uploads/${userId}/${exampleFile.path.split('/').pop()}`;
+      const copyRes = await fetch('https://paic-backend-3711168006.us-central1.run.app/api/copy-sample-in-gcs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sample_blob_name: exampleFile.path,
+          dest_blob_name
+        })
+      });
+      if (!copyRes.ok) throw new Error('Erro ao copiar sample no bucket');
+      const copyData = await copyRes.json();
+      const newBlobName = copyData.new_blob_name || dest_blob_name;
 
-      const result = await uploadCSVFromDriveLink(exampleFile.path);
-      toast.success('Arquivo de exemplo baixado e salvo com sucesso!');
+      const notifyRes = await fetch('https://paic-backend-3711168006.us-central1.run.app/api/notify-upload-complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ file_name: newBlobName })
+      });
+      const notifyMsg = await notifyRes.json();
+      toast.success(notifyMsg.message || 'Arquivo de exemplo copiado e pronto para processamento!');
 
-      if (result && result.columns) {
-        let mappedColumns = result.columns;
-
-        if (exampleFile.columnMapping) {
-          mappedColumns = mappedColumns.map(col =>
-            exampleFile.columnMapping && exampleFile.columnMapping[col.name]
-              ? { ...col, role: exampleFile.columnMapping[col.name] }
-              : col
-          );
-        }
-
-        if (exampleFile.numericColumns) {
-          mappedColumns = mappedColumns.map(col =>
-            exampleFile.numericColumns?.includes(col.name)
-              ? { ...col, isNumeric: true }
-              : col
-          );
-        }
-        if (typeof setColumns === 'function') setColumns(mappedColumns || []);
-        if (typeof setAllColumns === 'function') setAllColumns(mappedColumns || []);
-        if (typeof setFileInfo === 'function') setFileInfo({
-          name: result.filename || exampleFile.name,
-          type: 'text/csv',
-          size: result.size || 0,
-          fileId: result.fileId || result.file_id,
-          totalRows: result.totalRows,
-          isPartialData: result.isPartialData,
-        });
-        if (typeof setRawData === 'function') setRawData(result.data || []);
-      }
-
+      if (typeof setFileInfo === 'function') setFileInfo({
+        name: exampleFile.name,
+        type: 'text/csv',
+        size: 0,
+        fileId: newBlobName,
+        totalRows: undefined,
+        isPartialData: false,
+      });
       if (onSuccess) onSuccess();
     } catch (error: any) {
       toast.error(error?.message || 'Erro ao carregar arquivo de exemplo.');
@@ -157,7 +156,6 @@ const FileUpload: React.FC<FileUploadProps> = ({ onSuccess }) => {
       setIsUploading(false);
     }
   };
-
 
   const simulateUploadProgress = () => {
     setUploadProgress(0);

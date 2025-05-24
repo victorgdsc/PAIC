@@ -14,7 +14,7 @@ export const TEST_CONFIG = {
     {
       id: 'delivery-history',
       name: 'PEPFAR SCMS Global Delivery Dataset',
-      path: 'https://drive.google.com/uc?export=download&id=1Q__rEJeiTzWBDusTWD7dIVuD_YORviao',
+      path: 'samples/PEPFAR_SCMS_Global_Delivery_Dataset.csv',
       description: ['Histórico de entregas de kits de testes rápidos e medicamentos antirretrovirais em países atendidos pelo PEPFAR entre 2006 e 2015. Os dados representam os embarques realizados pelo SCMS, com informações como país, peso e modo de envio.', 'O arquivo possui 10.322 registros, permitindo análises relevantes com bom desempenho de carregamento.'],
       numericColumns: [
         'Weight (Kilograms)'
@@ -31,7 +31,7 @@ export const TEST_CONFIG = {
     {
       id: 'olist',
       name: 'Olist E-Commerce Dataset',
-      path: 'https://drive.google.com/uc?export=download&id=1ZZ9fbH9uLmzAzHsZMSU3n8eFt27Edc7q',
+      path: 'samples/Olist_E-Commerce_Dataset.csv',
       description: ['Pedidos realizados na Olist entre 2016 e 2018, com dados sobre entregas, clientes, produtos e pagamentos.',
 'O arquivo possui 120.105 registros, o que melhora a confiabilidade das previsões. Por ser grande, pode demorar mais para carregar e deixar a navegação mais lenta.'],
       numericColumns: [
@@ -56,7 +56,7 @@ export const TEST_CONFIG = {
       {
         id: 'DataCo Supply Chain Dataset',
         name: 'DataCo Supply Chain Dataset',
-        path: 'https://drive.google.com/uc?export=download&id=1tXV5w-dpooip7I3b-Vws5fGhSqOXcUAT',
+        path: 'samples/DataCo_Supply_Chain_Dataset.csv',
         description: ['Simulação de operações logísticas entre 2015 e 2018, com dados sobre pedidos, envios, clientes e categorias de produtos.',
           'O arquivo possui 180.519 registros, o que melhora a confiabilidade das previsões. Por ser grande, pode demorar mais para carregar e deixar a navegação mais lenta.'],
         numericColumns: [
@@ -92,7 +92,7 @@ export const TEST_CONFIG = {
     {
       id: 'loan-payments',
       name: 'Pagamentos de Empréstimos',
-      path: 'https://drive.google.com/uc?export=download&id=1pyhGpg1tql5GOGIhatGF7awhQhMRj9Zc',
+      path: 'samples/Loan_Payments.csv',
       description: ['Pagamentos de empréstimos registrados entre setembro e novembro de 2016, com informações sobre valor, prazo e perfil do cliente.',
         'O arquivo possui 500 registros, ideal para testes rápidos e com carregamento leve, mas com menor confiabilidade estatística.'],
       numericColumns: ['Principal', 'terms', 'past_due_days', 'age'],
