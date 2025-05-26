@@ -59,7 +59,7 @@ export const TEST_CONFIG = {
         ],
         columnMapping: {
           'Days for shipping (real)': 'actualDate',
-          'Days for shipment(scheduled)': 'estimatedDate',
+          'Days for shipment (scheduled)': 'estimatedDate',
           'Category Name': 'factor',
           'Customer City': 'factor',
           'Order City': 'factor',
