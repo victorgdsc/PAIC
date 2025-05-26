@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
+import Plot from 'react-plotly.js';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ResponsiveContainer, ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 import { useData } from '@/context/DataContext';
 import { api } from '@/lib/api';
 import { BarChart } from 'lucide-react';
@@ -29,29 +29,27 @@ const ScatterPlot: React.FC = () => {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-  if (fileInfo?.fileId) {
-    api.post('/api/scatter-data', { fileId: fileInfo.fileId })
-      .then(res => {
-        setAvailableColumns(
-          (res.data.columns || []).filter((name: string) => {
-            const column = columns.find((col) => col.name === name);
-            return (
-              !column?.isNumeric &&
-              name !== "actual_date" &&
-              name !== "delay_days" &&
-              name !== "estimated_date"
-            );
-          })
-        );
-        setMinDate(res.data.min_date || '');
-        setMaxDate(res.data.max_date || '');
-        setPendingStartDate(res.data.min_date || '');
-        setPendingEndDate(res.data.max_date || '');
-      });
-  }
-}, [fileInfo, columns]);
-
-  
+    if (fileInfo?.fileId) {
+      api.post('/api/scatter-data', { fileId: fileInfo.fileId })
+        .then(res => {
+          setAvailableColumns(
+            (res.data.columns || []).filter((name: string) => {
+              const column = columns.find((col) => col.name === name);
+              return (
+                !column?.isNumeric &&
+                name !== "actual_date" &&
+                name !== "delay_days" &&
+                name !== "estimated_date"
+              );
+            })
+          );
+          setMinDate(res.data.min_date || '');
+          setMaxDate(res.data.max_date || '');
+          setPendingStartDate(res.data.min_date || '');
+          setPendingEndDate(res.data.max_date || '');
+        });
+    }
+  }, [fileInfo, columns]);
 
   useEffect(() => {
     if (pendingFactor !== 'ALL' && pendingFactor) {
@@ -111,21 +109,72 @@ const ScatterPlot: React.FC = () => {
 
   const sortedScatterData = [...scatterData].sort((a, b) => new Date(a.actual_date).getTime() - new Date(b.actual_date).getTime());
 
-  const CustomTooltip = ({ active, payload }: any) => {
-    if (active && payload && payload.length > 0) {
-      const point = payload[0].payload;
-      const fatorKeys = Object.keys(point).filter(k => !['estimated_date', 'actual_date', 'delay_days'].includes(k));
-      return (
-        <div className="bg-white border rounded shadow p-2 text-xs">
-          <div><b>Data Real:</b> {point.actual_date ? new Date(point.actual_date).toLocaleDateString('pt-BR') : '-'}</div>
-          {fatorKeys.map((k) => (
-            <div key={k}><b>{k}:</b> {point[k]}</div>
-          ))}
-          <div><b>Atraso (dias):</b> {point.delay_days}</div>
-        </div>
-      );
+  let xDates = sortedScatterData.map(d => d.actual_date);
+  let xUniqueDates = Array.from(new Set(xDates));
+  let maxTicks = 10;
+  let tickvals: string[] = [];
+  let ticktext: string[] = [];
+  if (xUniqueDates.length > maxTicks) {
+    let step = Math.ceil(xUniqueDates.length / maxTicks);
+    for (let i = 0; i < xUniqueDates.length; i += step) {
+      tickvals.push(xUniqueDates[i]);
+      ticktext.push(new Date(xUniqueDates[i]).toLocaleDateString('pt-BR'));
     }
-    return null;
+    if (tickvals[tickvals.length - 1] !== xUniqueDates[xUniqueDates.length - 1]) {
+      tickvals.push(xUniqueDates[xUniqueDates.length - 1]);
+      ticktext.push(new Date(xUniqueDates[xUniqueDates.length - 1]).toLocaleDateString('pt-BR'));
+    }
+  } else {
+    tickvals = xUniqueDates;
+    ticktext = xUniqueDates.map(date => new Date(date).toLocaleDateString('pt-BR'));
+  }
+
+  const plotlyData = [
+    {
+      x: sortedScatterData.map(d => d.actual_date),
+      y: sortedScatterData.map(d => d.delay_days),
+      mode: 'markers',
+      type: 'scattergl',
+      marker: { color: '#2563eb', size: 7, opacity: 0.7 },
+      customdata: sortedScatterData.map(d => {
+        const fatorKeys = Object.keys(d).filter(k => !['estimated_date', 'actual_date', 'delay_days'].includes(k));
+        return [
+          d.actual_date ? new Date(d.actual_date).toLocaleDateString('pt-BR') : '-',
+          ...fatorKeys.map(k => `${k}: ${d[k]}`),
+          d.delay_days
+        ];
+      }),
+      hovertemplate: (() => {
+        const fatorKeys = sortedScatterData.length > 0 ? Object.keys(sortedScatterData[0]).filter(k => !['estimated_date', 'actual_date', 'delay_days'].includes(k)) : [];
+        let template = 'Data Real: %{customdata[0]}<br>';
+        fatorKeys.forEach((_, i) => {
+          template += `%{customdata[${i+1}]}<br>`;
+        });
+        template += 'Atraso/Adiantamento: %{customdata[' + (fatorKeys.length+1) + ']}<extra></extra>';
+        return template;
+      })(),
+      name: selectedFactor !== 'ALL' ? selectedFactor : 'Atraso',
+    }
+  ];
+
+  const layout = {
+    title: 'Gráfico de Dispersão (Plotly)',
+    xaxis: {
+      title: 'Data',
+      type: 'category',
+      tickvals: tickvals,
+      ticktext: ticktext,
+      automargin: true,
+    },
+    yaxis: {
+      title: 'Atraso (dias)',
+      automargin: true,
+      zeroline: false,
+    },
+    legend: { orientation: 'h', y: -0.2 },
+    hovermode: 'closest',
+    margin: { t: 50, l: 60, r: 30, b: 60 },
+    autosize: true,
   };
 
   return (
@@ -136,7 +185,7 @@ const ScatterPlot: React.FC = () => {
           Gráfico de Dispersão
         </CardTitle>
         <CardDescription>
-          Visualize a relação entre os atrasos e os diferentes fatores do seu conjunto de dados.
+        Visualize a relação entre os atrasos e os diferentes fatores do seu conjunto de dados.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -205,30 +254,13 @@ const ScatterPlot: React.FC = () => {
           </div>
         </div>
         <div className="w-full h-96 mt-6">
-          <ResponsiveContainer width="100%" height="100%">
-            <ScatterChart>
-              <CartesianGrid />
-              <XAxis
-                dataKey="actual_date"
-                name="Data"
-                tickFormatter={date => new Date(date).toLocaleDateString('pt-BR')}
-                type="category"
-              />
-              <YAxis
-                dataKey="delay_days"
-                name="Atraso (dias)"
-                type="number"
-                allowDecimals={false}
-              />
-              <Tooltip content={<CustomTooltip />} cursor={{ strokeDasharray: '3 3' }} />
-              <Legend />
-              <Scatter
-                name={selectedFactor !== 'ALL' ? selectedFactor : 'Atraso'}
-                data={sortedScatterData}
-                fill="#2563eb"
-              />
-            </ScatterChart>
-          </ResponsiveContainer>
+          <Plot
+            data={plotlyData}
+            layout={layout}
+            config={{ responsive: true, displayModeBar: true }}
+            style={{ width: '100%', height: '100%' }}
+            useResizeHandler
+          />
         </div>
         {loading && <div className="text-center mt-2">Carregando dados...</div>}
         {!loading && scatterData.length === 0 && <div className="text-center mt-2 text-muted-foreground">Nenhum dado encontrado para os filtros selecionados.</div>}

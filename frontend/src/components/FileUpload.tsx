@@ -1,9 +1,8 @@
-import React, { useCallback, useState, useEffect } from "react";
+import React, { useCallback, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Upload, FileSpreadsheet, X, CheckCircle2, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useData } from "@/context/DataContext";
-import { uploadCSVFromDriveLink } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { toast } from "@/lib/toast-helpers";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -19,7 +18,6 @@ const API_URL = import.meta.env.VITE_API_URL;
 
 const FileUpload: React.FC<FileUploadProps> = ({ onSuccess }) => {
   const {
-    handleFileUpload,
     fileInfo,
     isLoading,
     resetData,
@@ -27,7 +25,6 @@ const FileUpload: React.FC<FileUploadProps> = ({ onSuccess }) => {
     setColumns,
     setAllColumns,
     setFileInfo,
-    setRawData,
   } = useData();
   
   const [dragActive, setDragActive] = useState(false);
@@ -62,7 +59,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onSuccess }) => {
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ file_name: file.name })
+          body: JSON.stringify({ file_name: `uploads/${file.name}` })
         }
       );
       const notifyMsg = await notifyRes.json();
@@ -331,7 +328,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onSuccess }) => {
             className="hidden"
             onChange={onFileChange}
             accept=".csv,.xls,.xlsx"
-            disabled={isLoading}
+            disabled={isLoading || isUploading}
           />
 
           <div className="flex flex-col items-center w-full">
@@ -356,11 +353,18 @@ const FileUpload: React.FC<FileUploadProps> = ({ onSuccess }) => {
             <Button
               type="button"
               className="mt-2"
-              disabled={isLoading}
+              disabled={isLoading || isUploading}
               onClick={handleButtonClick}
             >
               <FileSpreadsheet className="mr-2 h-4 w-4" />
-              {isLoading ? "Carregando..." : "Selecionar arquivo CSV ou Excel"}
+              {(isLoading || isUploading) ? (
+                <>
+                  <span className="inline-block align-middle">
+                    <span className="h-4 w-4 mr-2 border-2 border-primary border-t-transparent rounded-full animate-spin inline-block" />
+                  </span>
+                  Enviando...
+                </>
+              ) : "Selecionar arquivo CSV ou Excel"}
             </Button>
 
             <div className="mt-6 text-xs text-muted-foreground w-full">
@@ -376,11 +380,14 @@ const FileUpload: React.FC<FileUploadProps> = ({ onSuccess }) => {
             </div>
           </div>
 
-          {isLoading && (
+          {(isLoading || isUploading) && (
             <div className="mt-6">
               <p className="text-sm text-muted-foreground mb-2">
-                Carregando arquivo... {uploadProgress}%
+                Enviando arquivo... {uploadProgress}%
               </p>
+              <div className="flex items-center justify-center mb-2">
+                <span className="h-5 w-5 mr-2 border-2 border-primary border-t-transparent rounded-full animate-spin inline-block" />
+              </div>
               <Progress value={uploadProgress} className="h-2" />
             </div>
           )}

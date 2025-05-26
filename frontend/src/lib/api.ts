@@ -120,7 +120,7 @@ export const parseFile = async (file: File): Promise<ParseFileResponse> => {
     };
     
     if (!result.fileId) {
-      console.error('No fileId in response:', response.data);
+      console.error('Sem FileId:', response.data);
       throw new Error('ID do arquivo não retornado pelo servidor');
     }
 return result;
