@@ -3,7 +3,7 @@ import { useData } from "@/context/DataContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { predictDelay, PredictRequest, api } from "@/lib/api";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import SelectAuto from "./SelectAuto";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Clock, AlertTriangle, CheckCircle2, ArrowRightCircle, BarChart } from "lucide-react";
@@ -167,27 +167,12 @@ const PredictiveAnalysis: React.FC = () => {
                           }
                         />
                       ) : (
-                        <Select
-                          value={factorValues[factor.name] || ""}
-                          onValueChange={(value) =>
-                            handleFactorInputChange(factor.name, value)
-                          }
-                        >
-                          <SelectTrigger className="w-full mt-1">
-                            <SelectValue
-                              placeholder={`Selecione ${factor.name}`}
-                            />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {(availableFactorValues[factor.name] || []).map(
-                              (value) => (
-                                <SelectItem key={value} value={value}>
-                                  {value}
-                                </SelectItem>
-                              )
-                            )}
-                          </SelectContent>
-                        </Select>
+                        <SelectAuto
+                          value={factorValues[factor.name] || null}
+                          onChange={(value) => handleFactorInputChange(factor.name, value)}
+                          options={availableFactorValues[factor.name] || []}
+                          placeholder={`Selecione ${factor.name}`}
+                        />
                       )}
                     </div>
                   );

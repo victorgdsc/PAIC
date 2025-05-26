@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useData } from '@/context/DataContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import SelectAuto from './SelectAuto';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { getForecast, api } from "@/lib/api";
@@ -45,7 +45,7 @@ const SeasonalityForecast: React.FC = () => {
   const { getFactorValueMap, fileInfo, columns } = useData();
   const [selectedFactor, setSelectedFactor] = useState<string>("overall");
   const [selectedValue, setSelectedValue] = useState<string>("");
-  const [factorValues, setFactorValues] = useState<string[]>([]); // NEW STATE
+  const [factorValues, setFactorValues] = useState<string[]>([]);
   const [forecastData, setForecastData] = useState<ForecastApiResponse | null>(
     null
   );
@@ -293,23 +293,13 @@ const SeasonalityForecast: React.FC = () => {
     if (getIsNumeric(selectedFactor)) return null;
     return (
       <div className="w-full md:w-1/4">
-        <Select value={selectedValue} onValueChange={setSelectedValue}>
-          <SelectTrigger>
-            <SelectValue placeholder="Selecionar valor do fator" />
-          </SelectTrigger>
-          <SelectContent>
-            {valueOptions.map((val) => (
-              <SelectItem key={val} value={val}>
-                {val}
-              </SelectItem>
-            ))}
-          </SelectContent>
-          {valueOptions.length === 0 && (
-            <div style={{ color: '#888', fontSize: 12, padding: '4px 8px' }}>
-              Nenhum valor disponível
-            </div>
-          )}
-        </Select>
+        <SelectAuto
+          value={selectedValue}
+          onChange={setSelectedValue}
+          options={valueOptions.map(val => ({ value: val, label: val }))}
+          placeholder="Selecionar valor do fator"
+          isDisabled={valueOptions.length === 0}
+        />
       </div>
     );
   };
@@ -327,33 +317,22 @@ const SeasonalityForecast: React.FC = () => {
           o melhor modelo (ARMA ou GLM).
         </CardDescription>
         <div className="flex flex-wrap gap-4 pt-4">
-          <Select
+          <SelectAuto
             value={selectedFactor}
-            onValueChange={(value) => {
+            onChange={(value) => {
               setSelectedFactor(value);
               setSelectedValue("");
               setForecastData(null);
               setError(null);
             }}
-          >
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Selecionar Fator" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="overall">Geral (Todos os Dados)</SelectItem>
-              {factorOptions
+            options={[
+              { value: "overall", label: "Todos" },
+              ...factorOptions
                 .filter((factor) => !getIsNumeric(factor))
-                .map((factor) => (
-                  <SelectItem
-                    key={factor}
-                    value={factor}
-                    className="capitalize"
-                  >
-                    {factor.replace("_", " ")}
-                  </SelectItem>
-                ))}
-            </SelectContent>
-          </Select>
+                .map((factor) => ({ value: factor, label: factor.replace("_", " ") }))
+            ]}
+            placeholder="Selecionar Fator"
+          />
 
           {renderValueInput()}
         </div>

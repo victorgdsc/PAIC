@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import Plot from 'react-plotly.js';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import SelectAuto from './SelectAuto';
 import { useData } from '@/context/DataContext';
 import { api } from '@/lib/api';
 import { BarChart } from 'lucide-react';
@@ -89,7 +89,6 @@ const ScatterPlot: React.FC = () => {
         fatorValorMax,
         dataInicio: pendingStartDate || undefined,
         dataFim: pendingEndDate || undefined,
-        limit: 1000,
       });
       setScatterData(res.data.scatter || []);
       setSelectedFactor(pendingFactor);
@@ -193,33 +192,23 @@ const ScatterPlot: React.FC = () => {
           <div className="space-y-1 h-full flex flex-col justify-end">
             <label className="text-sm font-medium text-gray-700">Fator</label>
             <div className="mt-1">
-              <Select value={pendingFactor} onValueChange={setPendingFactor}>
-                <SelectTrigger className="h-9 text-base">
-                  <SelectValue placeholder="Selecionar fator" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">Ver tudo</SelectItem>
-                  {availableColumns.map(col => (
-                    <SelectItem key={col} value={col}>{col}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SelectAuto
+                value={pendingFactor || null}
+                onChange={setPendingFactor}
+                options={[{ value: "ALL", label: "Todos" }, ...availableColumns.map(col => ({ value: col, label: col }))]}
+                placeholder="Selecionar fator"
+              />
             </div>
           </div>
           <div className="space-y-1 h-full flex flex-col">
             <label className="text-sm font-medium text-gray-700">Valor do Fator</label>
             <div className="mt-1">
-              <Select value={pendingFatorValue} onValueChange={setPendingFatorValue}>
-                <SelectTrigger className="h-9 text-base">
-                  <SelectValue placeholder="Todos" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">Todos</SelectItem>
-                  {fatorValues.map(val => (
-                    <SelectItem key={val} value={val}>{val}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SelectAuto
+                value={pendingFatorValue}
+                onChange={setPendingFatorValue}
+                options={[{ value: "ALL", label: "Todos" }, ...fatorValues.map(val => ({ value: val, label: val }))]}
+                placeholder="Todos"
+              />
             </div>
           </div>
           <div className="space-y-1 h-full flex flex-col">

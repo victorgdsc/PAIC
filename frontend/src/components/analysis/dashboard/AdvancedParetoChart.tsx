@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import SelectAuto from './SelectAuto';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useData } from '@/context/DataContext';
@@ -241,22 +241,13 @@ const AdvancedParetoChart: React.FC<AdvancedParetoChartProps> = ({
             <div className="space-y-1 h-full flex flex-col">
               <label className="text-sm font-medium text-gray-700">Fator</label>
               <div className="mt-1 flex-grow">
-                <Select
-                  value={factor}
-                  onValueChange={handleFactorChange}
-                  disabled={isLoading}
-                >
-                  <SelectTrigger className="h-9">
-                    <SelectValue placeholder="Selecione um fator" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableColumns.map((col) => (
-                      <SelectItem key={col} value={col}>
-                        {col}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SelectAuto
+                  value={factor || null}
+                  onChange={handleFactorChange}
+                  options={availableColumns}
+                  placeholder="Selecione um fator"
+                  isDisabled={isLoading}
+                />
               </div>
             </div>
 
@@ -265,23 +256,13 @@ const AdvancedParetoChart: React.FC<AdvancedParetoChartProps> = ({
                 Filtrar por valor
               </label>
               <div className="mt-1 flex-grow">
-                <Select
+                <SelectAuto
                   value={factorValue}
-                  onValueChange={setFactorValue}
-                  disabled={isLoading || !factor}
-                >
-                  <SelectTrigger className="h-9">
-                    <SelectValue placeholder="Todos" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ALL">Todos</SelectItem>
-                    {factorValues.map((val) => (
-                      <SelectItem key={val} value={val}>
-                        {val}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  onChange={setFactorValue}
+                  options={factorValues}
+                  placeholder="Todos"
+                  isDisabled={isLoading || !factor}
+                />
               </div>
             </div>
             <div className="space-y-1 h-full flex flex-col">
@@ -325,19 +306,16 @@ const AdvancedParetoChart: React.FC<AdvancedParetoChartProps> = ({
                 </div>
               </div>
               <div className="mt-1">
-                <Select
+                <SelectAuto
                   value={metricType}
-                  onValueChange={(val) => setMetricType(val as any)}
-                >
-                  <SelectTrigger className="h-9">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="avg">Média</SelectItem>
-                    <SelectItem value="sum">Soma</SelectItem>
-                    <SelectItem value="score">Pontuação</SelectItem>
-                  </SelectContent>
-                </Select>
+                  onChange={(val) => setMetricType(val as any)}
+                  options={[
+                    { value: "avg", label: "Média" },
+                    { value: "sum", label: "Soma" },
+                    { value: "score", label: "Pontuação" }
+                  ]}
+                  placeholder="Tipo de Métrica"
+                />
               </div>
             </div>
             <div className="space-y-1 h-full flex flex-col">
