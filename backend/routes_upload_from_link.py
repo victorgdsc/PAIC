@@ -1,14 +1,21 @@
-from flask import Blueprint, request, jsonify, current_app
+from flask import Blueprint, request, jsonify
 import requests
+import uuid
 import os
-from werkzeug.utils import secure_filename
-from config import UPLOAD_FOLDER, ALLOWED_EXTENSIONS
+from google.cloud import storage
 
 bp = Blueprint('upload_from_link', __name__)
 
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+def upload_to_gcs(file_content, destination_blob_name):
+    """Uploads a file to Google Cloud Storage."""
+    storage_client = storage.Client()
+    bucket = storage_client.bucket('paic-uploads-3711168007')
+    blob = bucket.blob(destination_blob_name)
+    blob.upload_from_string(file_content)
+    return f"https://storage.googleapis.com/{bucket.name}/{blob.name}"
 
+from utils.csv_parser import parse_csv
+from utils.data_prep import infer_column_types
 
 @bp.route('/api/upload-from-link', methods=['POST'])
 def upload_from_link():
@@ -21,29 +28,22 @@ def upload_from_link():
         if response.status_code != 200:
             return jsonify({"error": "Failed to download file"}), 400
 
-        import uuid
-        original_filename = file_url.split('id=')[-1] + '.csv'
-        filename = f"{uuid.uuid4()}_{secure_filename(original_filename)}"
-        upload_folder = current_app.config["UPLOAD_FOLDER"]
-        file_path = os.path.join(upload_folder, filename)
-        os.makedirs(upload_folder, exist_ok=True)
-        with open(file_path, 'wb') as f:
-            f.write(response.content)
+        file_content = response.content
+        file_extension = os.path.splitext(file_url)[1] or '.csv'
+        filename = f"uploads/{uuid.uuid4()}{file_extension}"
 
-        from utils.csv_parser import parse_csv
-        from utils.data_prep import infer_column_types
-        with open(file_path, 'rb') as f:
-            file_content = f.read()
         try:
-            chunks = list(parse_csv(file_content))
-            data_sample = chunks[0] if chunks else []
+            chunk_gen = parse_csv(file_content, chunk_size=500)
+            data_sample = next(chunk_gen, [])
         except Exception as e:
             return jsonify({"error": f"Erro ao processar CSV: {str(e)}"}), 500
         columns = infer_column_types(data_sample) if data_sample else []
+
+        file_url_gcs = upload_to_gcs(file_content, filename)
+
         return jsonify({
-            "message": "Arquivo baixado e salvo com sucesso",
-            "filename": filename,
-            "fileId": filename,
+            "message": "Arquivo salvo com sucesso",
+            "fileUrl": file_url_gcs,
             "columns": columns,
             "data": data_sample
         })

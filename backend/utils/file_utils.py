@@ -2,6 +2,59 @@ import os
 import time
 from werkzeug.utils import secure_filename
 from flask import current_app
+from google.cloud import storage
+from io import BytesIO
+import pandas as pd
+
+BUCKET_NAME = "paic-uploads-3711168007"
+
+import google.auth
+
+def get_storage_client():
+    credentials, project = google.auth.default()
+    return storage.Client(credentials=credentials, project=project)
+
+def get_bucket():
+    client = get_storage_client()
+    return client.bucket(BUCKET_NAME)
+
+def upload_bytes_to_gcs(content, blob_name):
+    bucket = get_bucket()
+    blob = bucket.blob(blob_name)
+    blob.upload_from_string(content)
+
+def upload_file_to_gcs(local_file_path, blob_name):
+    bucket = get_bucket()
+    blob = bucket.blob(blob_name)
+    blob.upload_from_filename(local_file_path)
+
+def download_blob_as_bytes(blob_name):
+    bucket = get_bucket()
+    blob = bucket.blob(blob_name)
+    return blob.download_as_bytes()
+
+def download_blob_as_text(blob_name):
+    bucket = get_bucket()
+    blob = bucket.blob(blob_name)
+    return blob.download_as_text()
+
+def blob_exists(blob_name):
+    bucket = get_bucket()
+    blob = bucket.blob(blob_name)
+    return blob.exists(get_storage_client())
+
+def read_csv_from_gcs(blob_name, **kwargs):
+    content = download_blob_as_bytes(blob_name)
+    return pd.read_csv(BytesIO(content), **kwargs)
+
+def read_parquet_from_gcs(blob_name):
+    content = download_blob_as_bytes(blob_name)
+    return pd.read_parquet(BytesIO(content))
+
+def save_parquet_to_gcs(df, blob_name):
+    buffer = BytesIO()
+    df.to_parquet(buffer, index=False)
+    upload_bytes_to_gcs(buffer.getvalue(), blob_name)
 
 
 def allowed_file(filename: str) -> bool:

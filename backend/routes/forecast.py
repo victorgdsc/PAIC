@@ -1,12 +1,31 @@
 from flask import Blueprint, request, jsonify, current_app
-import traceback
 import pandas as pd
-from werkzeug.utils import secure_filename
+import traceback
 import os
-from utils.analyzer import run_and_evaluate_forecasts
-from utils.file_utils import load_processed_dataframe
+from utils.file_utils import read_csv_from_gcs, read_parquet_from_gcs, blob_exists, load_processed_dataframe
+from utils.analysis.forecast import run_and_evaluate_forecasts
 
-forecast_bp = Blueprint('forecast', __name__, url_prefix='/api')
+forecast_bp = Blueprint("forecast", __name__, url_prefix="/api")
+
+@forecast_bp.route('/forecast-factor-values', methods=['POST'])
+def forecast_factor_values():
+    try:
+        data = request.get_json()
+        file_id = data.get('fileId')
+        fator = data.get('fator')
+        if not file_id or not fator:
+            return jsonify({'error': 'fileId e fator são obrigatórios'}), 400
+        df, load_error = load_processed_dataframe(file_id)
+        if load_error:
+            return jsonify({'error': load_error}), 404
+        if fator not in df.columns:
+            return jsonify({'error': f"Coluna '{fator}' não encontrada nos dados."}), 400
+        values = df[fator].dropna().unique().tolist()
+        values = [str(v) if not isinstance(v, (str, int, float, bool)) else v for v in values]
+        return jsonify({'values': values})
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'error': f'Erro ao buscar valores do fator: {str(e)}'}), 500
 
 @forecast_bp.route('/forecast', methods=['GET'])
 def get_forecast_route():

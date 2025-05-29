@@ -12,6 +12,32 @@ MIN_DATA_POINTS_FOR_TIMESERIES = 15
 FORECAST_PERIODS = 12
 
 
+def calculate_delivery_status_counts(df: pd.DataFrame) -> dict:
+    antecipadas = 0
+    no_prazo = 0
+    atrasadas = 0
+
+    if "estimated_date" in df.columns and "actual_date" in df.columns:
+        for _, row in df.iterrows():
+            try:
+                estimated = pd.to_datetime(row["estimated_date"])
+                actual = pd.to_datetime(row["actual_date"])
+                if actual < estimated:
+                    antecipadas += 1
+                elif actual == estimated:
+                    no_prazo += 1
+                else:
+                    atrasadas += 1
+            except Exception:
+                continue
+    total = antecipadas + no_prazo + atrasadas
+    return {
+        "antecipadas": antecipadas,
+        "noPrazo": no_prazo,
+        "atrasadas": atrasadas,
+        "total": total
+    }
+
 def analyze_data(df: pd.DataFrame) -> Dict[str, Any]:
     try:
         stats, stats_err = calculate_delay_statistics(df)
@@ -54,6 +80,7 @@ def analyze_data(df: pd.DataFrame) -> Dict[str, Any]:
 
         mapped_insights = [i.get("descricao", "") for i in insights]
 
+        status_counts = calculate_delivery_status_counts(df)
         return {
             "delayStatistics": mapped_stats,
             "factorAnalysis": mapped_factors,
@@ -67,6 +94,12 @@ def analyze_data(df: pd.DataFrame) -> Dict[str, Any]:
                 "warning": forecast_results.get("warning"),
             },
             "insights": mapped_insights,
+            "statusCounts": {
+                "antecipadas": status_counts["antecipadas"],
+                "noPrazo": status_counts["noPrazo"],
+                "atrasadas": status_counts["atrasadas"]
+            },
+            "totalDeliveries": status_counts["total"]
         }
 
     except Exception as e:

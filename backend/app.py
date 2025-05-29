@@ -20,6 +20,8 @@ from routes.scatter import scatter_bp
 from routes.pareto import pareto_bp
 from routes.chunk import chunk_bp
 from routes_upload_from_link import bp as upload_from_link_bp
+from routes.gcs_upload import upload_bp
+from routes.columns import columns_bp
 
 app = Flask(__name__)
 
@@ -28,15 +30,12 @@ app.config["PROCESSED_FOLDER"] = PROCESSED_FOLDER
 
 CORS(
     app,
-    resources={
-        r"/*": {
-            "origins": CORS_ORIGINS,
-            "allow_headers": CORS_ALLOW_HEADERS,
-            "methods": CORS_METHODS,
-            "supports_credentials": CORS_SUPPORTS_CREDENTIALS,
-        }
-    },
+    origins=CORS_ORIGINS,
+    allow_headers=CORS_ALLOW_HEADERS,
+    methods=CORS_METHODS,
+    supports_credentials=CORS_SUPPORTS_CREDENTIALS,
 )
+
 
 os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
 os.makedirs(app.config["PROCESSED_FOLDER"], exist_ok=True)
@@ -50,7 +49,9 @@ blueprints = [
     scatter_bp,
     pareto_bp,
     chunk_bp,
-    upload_from_link_bp, 
+    upload_from_link_bp,
+    upload_bp,
+    columns_bp,
 ]
 
 for bp in blueprints:
@@ -68,6 +69,11 @@ def handle_exception(e):
         return e
     return jsonify(error=f"Erro interno do servidor: {str(e)}"), 500
 
+
+print("=== FLASK ROUTES ===")
+for rule in app.url_map.iter_rules():
+    print(rule)
+print("====================")
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)

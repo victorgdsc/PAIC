@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify, current_app
 from utils.data_prep import prepare_data
 from utils.analyzer import analyze_data
-from utils.file_utils import save_processed_dataframe
+from utils.file_utils import read_csv_from_gcs, read_parquet_from_gcs, blob_exists, save_processed_dataframe
 
 analyze_bp = Blueprint("analyze", __name__, url_prefix="/api")
 
@@ -21,11 +21,11 @@ def analyze_route():
             return jsonify({"error": "Payload incompleto: informações das colunas ou fileId ausentes"}), 400
 
 
-        import os
-        import pandas as pd
-        UPLOAD_FOLDER = current_app.config["UPLOAD_FOLDER"]
-        file_path = os.path.join(UPLOAD_FOLDER, file_id)
-        df = pd.read_csv(file_path)
+        from utils.file_utils import read_csv_from_gcs
+        blob_name = file_id
+        if not (blob_name.startswith('uploads/') or blob_name.startswith('samples/')):
+            blob_name = f'uploads/{blob_name}'
+        df = read_csv_from_gcs(blob_name)
 
         try:
 

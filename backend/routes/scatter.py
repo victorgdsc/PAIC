@@ -1,7 +1,6 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, jsonify, request
+from utils.file_utils import read_csv_from_gcs, read_parquet_from_gcs, blob_exists, load_processed_dataframe
 import pandas as pd
-import os
-from utils.file_utils import load_processed_dataframe
 import random
 
 scatter_bp = Blueprint("scatter", __name__, url_prefix="/api")
@@ -50,7 +49,6 @@ def scatter_data_route():
         fator_valor = payload.get("fatorValor")
         data_inicio = payload.get("dataInicio")
         data_fim = payload.get("dataFim")
-        limit = int(payload.get("limit", 1000))
 
         if not file_id:
             return jsonify({"error": "fileId não fornecido"}), 400
@@ -77,8 +75,6 @@ def scatter_data_route():
         except Exception as e:
             return jsonify({"error": f"Erro ao montar scatter: {str(e)}", "cols": list(df.columns), "scatter_cols": scatter_cols}), 500
 
-        if len(scatter_data) > limit:
-            scatter_data = random.sample(scatter_data, limit)
 
         min_date = df["actual_date"].min()
         max_date = df["actual_date"].max()

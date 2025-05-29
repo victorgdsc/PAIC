@@ -9,21 +9,24 @@ load_data_bp = Blueprint("load_data", __name__, url_prefix="/api")
 @load_data_bp.route("/loadData", methods=["POST"])
 def load_data_route():
     try:
+        from utils.file_utils import read_csv_from_gcs, read_parquet_from_gcs, blob_exists
         data = request.json
         file_id = data.get("fileId")
 
         if not file_id:
             return jsonify({"error": "fileId não fornecido"}), 400
 
-        file_path = os.path.join(current_app.config["UPLOAD_FOLDER"], file_id)
-
-        if not os.path.exists(file_path):
+        blob_name_parquet = f"processed/{file_id}.parquet"
+        blob_name_csv = f"uploads/{file_id}.csv"
+        if blob_exists(blob_name_parquet):
+            df = read_parquet_from_gcs(blob_name_parquet)
+        elif blob_exists(blob_name_csv):
+            df = read_csv_from_gcs(blob_name_csv)
+        else:
             return jsonify({"error": "Arquivo não encontrado no servidor"}), 404
 
         try:
-            with open(file_path, "rb") as f:
-                file_content = f.read()
-            all_data = []
+            all_data = df.to_dict(orient="records")
             data_generator = parse_csv(file_content)
             for chunk in data_generator:
                 all_data.extend(chunk)

@@ -4,7 +4,7 @@ import uuid
 from werkzeug.utils import secure_filename
 from utils.csv_parser import parse_csv
 from utils.data_prep import infer_column_types
-from utils.file_utils import allowed_file, save_uploaded_file
+from utils.file_utils import allowed_file, upload_bytes_to_gcs
 
 parse_bp = Blueprint("parse", __name__, url_prefix="/api")
 

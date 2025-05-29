@@ -1,8 +1,9 @@
-from utils.file_utils import load_processed_dataframe
-from flask import Blueprint, request, jsonify, current_app
-import pandas as pd
 import os
-from typing import List, Tuple
+import pandas as pd
+from typing import Tuple, List
+from flask import Blueprint, request, jsonify, current_app
+from utils.file_utils import read_csv_from_gcs, read_parquet_from_gcs, blob_exists, load_processed_dataframe
+from utils.analysis.factors import perform_factor_analysis
 
 pareto_bp = Blueprint("pareto", __name__, url_prefix="/api")
 
@@ -60,13 +61,9 @@ def advanced_pareto():
         if not file_id or not fator:
             return jsonify({"error": "fileId e fator são obrigatórios"}), 400
 
-        processed_file_path = os.path.join(
-            current_app.config["PROCESSED_FOLDER"], f"{file_id}.parquet"
-        )
-        if not os.path.exists(processed_file_path):
-            return jsonify({"error": "Arquivo não encontrado"}), 404
-
-        df = pd.read_parquet(processed_file_path)
+        df, load_error = load_processed_dataframe(file_id)
+        if load_error or df is None:
+            return jsonify({"error": f"Erro ao carregar dados: {load_error}"}), 404
 
         if "delay_days" not in df.columns:
             if "actual_date" in df.columns and "estimated_date" in df.columns:
