@@ -30,7 +30,7 @@ const ScatterPlot: React.FC = () => {
 
   useEffect(() => {
     if (fileInfo?.fileId) {
-      api.post('/api/scatter-data', { fileId: fileInfo.fileId })
+      api.post('/api/scatter-data', { fileId: fileInfo.fileId, onlyMeta: true })
         .then(res => {
           setAvailableColumns(
             (res.data.columns || []).filter((name: string) => {
