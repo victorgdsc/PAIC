@@ -25,17 +25,36 @@ def scatter_factor_values():
                 jsonify({"error": f"Erro ao carregar dados: {load_error}"}),
                 500,
             )
+        if "actual_date" in df.columns:
+            df["actual_date"] = pd.to_datetime(df["actual_date"], errors="coerce")
         if data_inicio:
-            df = df[df["actual_date"] >= data_inicio]
+            df = df[df["actual_date"] >= pd.to_datetime(data_inicio)]
         if data_fim:
-            df = df[df["actual_date"] <= data_fim]
+            df = df[df["actual_date"] <= pd.to_datetime(data_fim)]
         if fator not in df.columns:
             return (
                 jsonify({"error": "Fator não encontrado no dataset"}),
                 400,
             )
-        values = df[fator].dropna().unique().tolist()
-        return jsonify({"values": values}), 200
+        # Identifica fatores categóricos (strings)
+        string_factors = [col for col in df.columns if df[col].dtype == 'object' or pd.api.types.is_string_dtype(df[col])]
+        factor_values = {
+            col: df[col].dropna().unique().tolist()
+            for col in string_factors
+        }
+        # Calcula menor e maior data
+        min_date = None
+        max_date = None
+        if "actual_date" in df.columns:
+            valid_dates = df["actual_date"].dropna()
+            if not valid_dates.empty:
+                min_date = valid_dates.min()
+                max_date = valid_dates.max()
+                if hasattr(min_date, 'isoformat'):
+                    min_date = min_date.isoformat()
+                if hasattr(max_date, 'isoformat'):
+                    max_date = max_date.isoformat()
+        return jsonify({"factors": factor_values, "min_date": min_date, "max_date": max_date}), 200
     except Exception as e:
         return jsonify({"error": f"Erro interno: {str(e)}"}), 500
 
@@ -89,6 +108,7 @@ def scatter_data_route():
                     "min_date": min_date_str,
                     "max_date": max_date_str,
                     "count": len(scatter_data),
+
                 }
             ),
             200,

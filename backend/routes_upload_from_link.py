@@ -7,7 +7,6 @@ from google.cloud import storage
 bp = Blueprint('upload_from_link', __name__)
 
 def upload_to_gcs(file_content, destination_blob_name):
-    """Uploads a file to Google Cloud Storage."""
     storage_client = storage.Client()
     bucket = storage_client.bucket('paic-uploads-3711168007')
     blob = bucket.blob(destination_blob_name)
