@@ -30,26 +30,18 @@ const ScatterPlot: React.FC = () => {
 
   useEffect(() => {
     if (fileInfo?.fileId) {
-      api.post('/api/scatter-data', { fileId: fileInfo.fileId, onlyMeta: true })
+      api.post('/api/scatter-factor-values', { fileId: fileInfo.fileId })
         .then(res => {
-          setAvailableColumns(
-            (res.data.columns || []).filter((name: string) => {
-              const column = columns.find((col) => col.name === name);
-              return (
-                !column?.isNumeric &&
-                name !== "actual_date" &&
-                name !== "delay_days" &&
-                name !== "estimated_date"
-              );
-            })
-          );
+          // Preenche os fatores disponíveis
+          const factors = res.data.factors || {};
+          setAvailableColumns(Object.keys(factors));
           setMinDate(res.data.min_date || '');
           setMaxDate(res.data.max_date || '');
           setPendingStartDate(res.data.min_date || '');
           setPendingEndDate(res.data.max_date || '');
         });
     }
-  }, [fileInfo, columns]);
+  }, [fileInfo]);
 
   useEffect(() => {
     if (pendingFactor !== 'ALL' && pendingFactor) {
@@ -59,8 +51,15 @@ const ScatterPlot: React.FC = () => {
         dataInicio: pendingStartDate || undefined,
         dataFim: pendingEndDate || undefined,
       }).then(res => {
-        const valoresDoFator = res.data.factors?.[pendingFactor] || [];
-        setFatorValues(valoresDoFator);
+        // Novo formato: { factors: { [fator]: [valores] }, min_date, max_date }
+        if (res.data && res.data.factors && res.data.factors[pendingFactor]) {
+          setFatorValues(res.data.factors[pendingFactor] || []);
+        } else {
+          setFatorValues([]);
+        }
+        // Atualiza datas se vierem na resposta
+        if (res.data.min_date) setMinDate(res.data.min_date);
+        if (res.data.max_date) setMaxDate(res.data.max_date);
         setPendingFatorValue('ALL');
       });
     } else {

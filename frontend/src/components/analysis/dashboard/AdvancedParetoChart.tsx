@@ -42,7 +42,7 @@ const AdvancedParetoChart: React.FC<AdvancedParetoChartProps> = ({
   const [factorValue, setFactorValue] = useState<string>("ALL");
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
-  const [factorValues, setFactorValues] = useState<Record<string, string[]>>({});
+  const [factorValues, setFactorValues] = useState<string[]>([]);
   const [atrasadosData, setAtrasadosData] = useState<AdvancedParetoData>({
     labels: [],
     values: [],
@@ -74,17 +74,11 @@ const AdvancedParetoChart: React.FC<AdvancedParetoChartProps> = ({
   useEffect(() => {
     if (!safeFileId) return;
     api
-      .post("/api/scatter-data", { fileId: safeFileId, onlyMeta: true })
+      .post("/api/scatter-factor-values", { fileId: safeFileId })
       .then((res) => {
-        const colNames = (res.data.columns || []).filter((name: string) => {
-          const column = columns.find((col) => col.name === name);
-          return (
-            !column?.isNumeric &&
-            name !== "actual_date" &&
-            name !== "delay_days" &&
-            name !== "estimated_date"
-          );
-        });
+        // Preenche os fatores disponíveis
+        const factors = res.data.factors || {};
+        const colNames = Object.keys(factors);
         setAvailableColumns(colNames);
         if (!factor && colNames.length > 0) {
           setFactor(colNames[0]);
@@ -95,21 +89,27 @@ const AdvancedParetoChart: React.FC<AdvancedParetoChartProps> = ({
       .catch(() => {
         setAvailableColumns([]);
       });
-  }, [safeFileId, columns]);
+  }, [safeFileId]);
 
   useEffect(() => {
-    if (!safeFileId) return;
-    const roles: Record<string, string> = {};
-    columns.forEach((col) => {
-      if (col.role) roles[col.name] = col.role;
-    });
+    if (!safeFileId || !factor) return;
     api
       .post("/api/scatter-factor-values", {
-        fileId: safeFileId,
-        roles,
-        dataInicio: startDate || undefined,
-        dataFim: endDate || undefined,
+        fileId: safeFileId
       })
+      .then((res) => {
+        // Novo formato: { factors: { [fator]: [valores] }, min_date, max_date }
+        if (res.data && res.data.factors && res.data.factors[factor]) {
+          setFactorValues(res.data.factors[factor] || []);
+        } else {
+          setFactorValues([]);
+        }
+        if (res.data.min_date) setStartDate(res.data.min_date);
+        if (res.data.max_date) setEndDate(res.data.max_date);
+        if (!factorValue || !((res.data.factors && res.data.factors[factor] || []).includes(factorValue))) setFactorValue("ALL");
+      })
+      .catch(() => setFactorValues([]));
+  }, [safeFileId, factor]);
 
   const fetchParetoData = async () => {
     setIsLoading(true);
@@ -258,9 +258,9 @@ const AdvancedParetoChart: React.FC<AdvancedParetoChartProps> = ({
                 <SelectAuto
                   value={factorValue}
                   onChange={setFactorValue}
-                  options={factorValues[factor] || []}
-                  placeholder="Selecionar valor do fator"
-                  isDisabled={factor === "" || factor === undefined || !(factor in factorValues)}
+                  options={factorValues}
+                  placeholder="Todos"
+                  isDisabled={isLoading || !factor}
                 />
               </div>
             </div>
@@ -501,4 +501,3 @@ const ToggleParetoChart: React.FC<ToggleParetoChartProps> = ({
 };
 
 export default AdvancedParetoChart;
-
