@@ -42,3 +42,8 @@ Thumbs.db
 
 # React
 *.local
+
+# Google Cloud
+paic-backend-1-8ab4863be373.json
+cors.json
+cloudbuild.yaml
