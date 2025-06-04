@@ -247,6 +247,7 @@ return updated;
         console.error('Erro ao fazer upload do arquivo:', error);
         let message = "Erro ao fazer upload do arquivo.";
         if (error?.response?.data?.error) {
+          const valores = error.response.data.factors?.[fator] || [];
           message = error.response.data.error;
         } else if (error?.message) {
           message = error.message;

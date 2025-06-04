@@ -105,9 +105,9 @@ const AdvancedParetoChart: React.FC<AdvancedParetoChartProps> = ({
         fator: factor,
       })
       .then((res) => {
-        const values = res.data.values || [];
-        setFactorValues(values);
-        if (!values.includes(factorValue)) setFactorValue("ALL");
+        const valoresDoFator = res.data.factors?.[factor] || [];
+        setFactorValues(valoresDoFator);
+        if (!valoresDoFator.includes(factorValue)) setFactorValue("ALL");
       })
       .catch(() => setFactorValues([]));
   }, [safeFileId, factor]);

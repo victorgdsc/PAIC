@@ -59,7 +59,8 @@ const ScatterPlot: React.FC = () => {
         dataInicio: pendingStartDate || undefined,
         dataFim: pendingEndDate || undefined,
       }).then(res => {
-        setFatorValues(res.data.values || []);
+        const valoresDoFator = res.data.factors?.[pendingFactor] || [];
+        setFatorValues(valoresDoFator);
         setPendingFatorValue('ALL');
       });
     } else {

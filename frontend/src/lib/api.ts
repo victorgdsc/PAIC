@@ -113,7 +113,6 @@ export const parseFile = async (file: File): Promise<ParseFileResponse> => {
     const result: ParseFileResponse = {
       columns: Array.isArray(response.data.columns) ? response.data.columns : [],
       chunked: Boolean(response.data.chunked),
-      data: Array.isArray(response.data.data) ? response.data.data : [],
       fileId: response.data.fileId || `file_${Date.now()}`,
       isPartialData: Boolean(response.data.chunked || response.data.isPartialData),
       totalRows: response.data.totalRows || (Array.isArray(response.data.data) ? response.data.data.length : 0)
