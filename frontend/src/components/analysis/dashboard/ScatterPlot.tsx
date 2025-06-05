@@ -15,7 +15,7 @@ interface ScatterPoint {
 const ScatterPlot: React.FC = () => {
   const { fileInfo, columns } = useData();
   const [scatterData, setScatterData] = useState<ScatterPoint[]>([]);
-  const [availableColumns, setAvailableColumns] = useState<string[]>([]);
+  const [availableColumns, setAvailableColumns] = useState<string[]>(columns.filter(col => col.role === 'factor' && !col.isNumeric).map(col => col.name));
   const [minDate, setMinDate] = useState<string>('');
   const [maxDate, setMaxDate] = useState<string>('');
   const [pendingFactor, setPendingFactor] = useState<string>('ALL');
@@ -28,46 +28,22 @@ const ScatterPlot: React.FC = () => {
   const [endDate, setEndDate] = useState<string>('');
   const [loading, setLoading] = useState(false);
 
+  // Buscar apenas datas mínimas/máximas ao carregar
   useEffect(() => {
     if (fileInfo?.fileId) {
-      api.post('/api/scatter-factor-values', { fileId: fileInfo.fileId })
+      api.post('/api/scatter-metadata', { fileId: fileInfo.fileId })
         .then(res => {
-          // Preenche os fatores disponíveis
-          const factors = res.data.factors || {};
-          setAvailableColumns(Object.keys(factors));
           setMinDate(res.data.min_date || '');
           setMaxDate(res.data.max_date || '');
           setPendingStartDate(res.data.min_date || '');
           setPendingEndDate(res.data.max_date || '');
         });
+      // Preencher fatores disponíveis do React (apenas não numéricos)
+      setAvailableColumns(columns.filter(col => col.role === 'factor' && !col.isNumeric).map(col => col.name));
     }
-  }, [fileInfo]);
+  }, [fileInfo, columns]);
 
-  useEffect(() => {
-    if (pendingFactor !== 'ALL' && pendingFactor) {
-      api.post('/api/scatter-factor-values', {
-        fileId: fileInfo?.fileId,
-        fator: pendingFactor,
-        dataInicio: pendingStartDate || undefined,
-        dataFim: pendingEndDate || undefined,
-      }).then(res => {
-        // Novo formato: { factors: { [fator]: [valores] }, min_date, max_date }
-        if (res.data && res.data.factors && res.data.factors[pendingFactor]) {
-          setFatorValues(res.data.factors[pendingFactor] || []);
-        } else {
-          setFatorValues([]);
-        }
-        // Atualiza datas se vierem na resposta
-        if (res.data.min_date) setMinDate(res.data.min_date);
-        if (res.data.max_date) setMaxDate(res.data.max_date);
-        setPendingFatorValue('ALL');
-      });
-    } else {
-      setFatorValues([]);
-      setPendingFatorValue('ALL');
-    }
-  }, [pendingFactor, fileInfo, pendingStartDate, pendingEndDate]);
-
+  // Buscar dados completos só ao filtrar/selecionar
   const fetchScatterData = async () => {
     setLoading(true);
     try {
@@ -100,6 +76,25 @@ const ScatterPlot: React.FC = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (pendingFactor !== 'ALL' && pendingFactor) {
+      api.post('/api/scatter-factor-values', {
+        fileId: fileInfo?.fileId,
+        fator: pendingFactor,
+        dataInicio: pendingStartDate || undefined,
+        dataFim: pendingEndDate || undefined,
+      }).then(res => {
+        setFatorValues(res.data.values || []);
+        setPendingFatorValue('ALL');
+      });
+    } else {
+      setFatorValues([]);
+      setPendingFatorValue('ALL');
+    }
+  }, [pendingFactor, fileInfo, pendingStartDate, pendingEndDate]);
+
+
 
   const getIsNumeric = (factorName: string) => {
     const col = columns.find(c => c.name === factorName);

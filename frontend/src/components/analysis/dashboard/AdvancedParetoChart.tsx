@@ -59,12 +59,11 @@ const AdvancedParetoChart: React.FC<AdvancedParetoChartProps> = ({
   const [crossAnalysis, setCrossAnalysis] = useState<
     Record<string, CrossAnalysisData>
   >({});
+  const { columns } = useData();
   const [isLoading, setIsLoading] = useState(false);
-  const [availableColumns, setAvailableColumns] = useState<string[]>([]);
+  const [availableColumns, setAvailableColumns] = useState<string[]>(columns.filter(col => col.role === 'factor' && !col.isNumeric).map(col => col.name));
   const [metricType, setMetricType] = useState<"avg" | "sum" | "score">("avg");
   const [viewMode, setViewMode] = useState<"late" | "early">("late");
-
-  const { columns } = useData();
 
   const handleFactorChange = (newFactor: string) => {
     setFactor(newFactor);
@@ -74,11 +73,10 @@ const AdvancedParetoChart: React.FC<AdvancedParetoChartProps> = ({
   useEffect(() => {
     if (!safeFileId) return;
     api
-      .post("/api/scatter-factor-values", { fileId: safeFileId })
+      .post("/api/scatter-metadata", { fileId: safeFileId })
       .then((res) => {
-        // Preenche os fatores disponíveis
-        const factors = res.data.factors || {};
-        const colNames = Object.keys(factors);
+        // Fatores agora vêm do React (apenas não numéricos)
+        const colNames = columns.filter(col => col.role === 'factor' && !col.isNumeric).map(col => col.name);
         setAvailableColumns(colNames);
         if (!factor && colNames.length > 0) {
           setFactor(colNames[0]);
@@ -89,24 +87,19 @@ const AdvancedParetoChart: React.FC<AdvancedParetoChartProps> = ({
       .catch(() => {
         setAvailableColumns([]);
       });
-  }, [safeFileId]);
+  }, [safeFileId, columns, factor]);
 
   useEffect(() => {
     if (!safeFileId || !factor) return;
     api
       .post("/api/scatter-factor-values", {
-        fileId: safeFileId
+        fileId: safeFileId,
+        fator: factor,
       })
       .then((res) => {
-        // Novo formato: { factors: { [fator]: [valores] }, min_date, max_date }
-        if (res.data && res.data.factors && res.data.factors[factor]) {
-          setFactorValues(res.data.factors[factor] || []);
-        } else {
-          setFactorValues([]);
-        }
-        if (res.data.min_date) setStartDate(res.data.min_date);
-        if (res.data.max_date) setEndDate(res.data.max_date);
-        if (!factorValue || !((res.data.factors && res.data.factors[factor] || []).includes(factorValue))) setFactorValue("ALL");
+        const values = res.data.values || [];
+        setFactorValues(values);
+        if (!values.includes(factorValue)) setFactorValue("ALL");
       })
       .catch(() => setFactorValues([]));
   }, [safeFileId, factor]);
