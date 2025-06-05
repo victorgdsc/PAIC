@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify, current_app
 import os
 import pandas as pd
 from utils.csv_parser import parse_csv
+from utils.file_utils import read_csv_from_gcs, read_parquet_from_gcs, blob_exists
 
 load_data_bp = Blueprint("load_data", __name__, url_prefix="/api")
 
@@ -9,7 +10,6 @@ load_data_bp = Blueprint("load_data", __name__, url_prefix="/api")
 @load_data_bp.route("/loadData", methods=["POST"])
 def load_data_route():
     try:
-        from utils.file_utils import read_csv_from_gcs, read_parquet_from_gcs, blob_exists
         data = request.json
         file_id = data.get("fileId")
 

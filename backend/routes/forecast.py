@@ -130,9 +130,12 @@ def get_forecast_route():
     "link": forecast_results.get('link'),
     "order_or_family": (
         f"{forecast_results['order']}" if forecast_results.get('model_used') == 'ARMA' and forecast_results.get('order')
-        else f"GLM({'Gaussiana' if forecast_results.get('family') == 'Gaussian' else forecast_results.get('family')})"
+        else (
+            f"GLM({'Gaussiana' if forecast_results.get('family') == 'Gaussian' else forecast_results.get('family')})"
             if forecast_results.get('model_used') == 'GLM' and forecast_results.get('family')
-        else "N/A"
+            else "GLM" if forecast_results.get('model_used') == 'GLM'
+            else "N/A"
+        )
     ),
     "significant": not (
         (forecast_results.get('model_used') == 'GLM' and "não significativas" in (forecast_results.get('warning') or '')) or

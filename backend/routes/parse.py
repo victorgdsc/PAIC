@@ -4,14 +4,13 @@ import uuid
 from werkzeug.utils import secure_filename
 from utils.csv_parser import parse_csv
 from utils.data_prep import infer_column_types
-from utils.file_utils import allowed_file, upload_bytes_to_gcs
+from utils.file_utils import allowed_file, upload_bytes_to_gcs, clean_old_files
 
 parse_bp = Blueprint("parse", __name__, url_prefix="/api")
 
 
 @parse_bp.route("/parseFile", methods=["POST"])
 def parse_file_route():
-    from utils.file_utils import clean_old_files
     clean_old_files()
     try:
         if "file" not in request.files:

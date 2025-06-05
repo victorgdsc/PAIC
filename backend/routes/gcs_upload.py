@@ -3,6 +3,12 @@ from google.cloud import storage
 from datetime import timedelta
 import os
 from flask_cors import CORS, cross_origin
+from google.cloud import storage
+from google.auth import default
+from google.auth.transport.requests import Request
+from datetime import datetime, timedelta
+from utils.file_utils import get_storage_client
+
 
 upload_bp = Blueprint("upload", __name__, url_prefix="/api")
 CORS(upload_bp)
@@ -15,10 +21,7 @@ def generate_upload_url():
         return jsonify({'error': 'Nome do arquivo é obrigatório'}), 400
 
     bucket_name = os.environ.get('GCS_BUCKET', 'SEU_BUCKET_AQUI')
-    from google.cloud import storage
-    from google.auth import default
-    from google.auth.transport.requests import Request
-    from datetime import datetime, timedelta
+
 
     credentials, project = default()
 
@@ -54,7 +57,6 @@ def notify_upload_complete():
         return jsonify({'error': 'Nome do arquivo é obrigatório'}), 400
     bucket_name = os.environ.get('GCS_BUCKET', 'SEU_BUCKET_AQUI')
     print(f"[notify_upload_complete] bucket_name: {bucket_name}")
-    from utils.file_utils import get_storage_client
     storage_client = get_storage_client()
     bucket = storage_client.bucket(bucket_name)
     blob = bucket.blob(file_name)
@@ -63,8 +65,6 @@ def notify_upload_complete():
         print(f"[notify_upload_complete] Arquivo {file_name} não encontrado no bucket {bucket_name}!")
         return jsonify({'error': 'Arquivo não encontrado no bucket.'}), 404
 
-    import io
-    import pandas as pd
     try:
         print(f"[notify_upload_complete] Tentando baixar e ler o header do arquivo {file_name}")
         data_bytes = blob.download_as_bytes()
@@ -91,7 +91,6 @@ def copy_sample_in_gcs():
         return jsonify({'error': 'sample_blob_name e dest_blob_name são obrigatórios'}), 400
 
     bucket_name = os.environ.get('GCS_BUCKET', 'SEU_BUCKET_AQUI')
-    from utils.file_utils import get_storage_client
     storage_client = get_storage_client()
     bucket = storage_client.bucket(bucket_name)
 
@@ -101,8 +100,6 @@ def copy_sample_in_gcs():
 
     new_blob = bucket.copy_blob(sample_blob, bucket, dest_blob_name)
 
-    import io
-    import pandas as pd
     blob = bucket.blob(dest_blob_name)
     data = blob.download_as_bytes()
     try:

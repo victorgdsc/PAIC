@@ -36,7 +36,6 @@ def infer_column_types(data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 def prepare_data(
     dataset, columns_info: List[Dict[str, Any]]
 ) -> pd.DataFrame:
-    import pandas as pd
     if isinstance(dataset, pd.DataFrame):
         df = dataset.copy()
         if df.empty:

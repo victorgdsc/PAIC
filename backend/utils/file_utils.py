@@ -5,10 +5,11 @@ from flask import current_app
 from google.cloud import storage
 from io import BytesIO
 import pandas as pd
+import google.auth
 
 BUCKET_NAME = "paic-uploads-3711168007"
 
-import google.auth
+
 
 def get_storage_client():
     credentials, project = google.auth.default()
@@ -91,7 +92,6 @@ def save_processed_dataframe(df, file_id: str):
 
 
 def load_processed_dataframe(file_id: str):
-    import pandas as pd
 
     try:
         processed_file_path = get_processed_file_path(file_id)

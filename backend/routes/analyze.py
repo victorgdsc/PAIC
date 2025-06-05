@@ -21,7 +21,6 @@ def analyze_route():
             return jsonify({"error": "Payload incompleto: informações das colunas ou fileId ausentes"}), 400
 
 
-        from utils.file_utils import read_csv_from_gcs
         blob_name = file_id
         if not (blob_name.startswith('uploads/') or blob_name.startswith('samples/')):
             blob_name = f'uploads/{blob_name}'
