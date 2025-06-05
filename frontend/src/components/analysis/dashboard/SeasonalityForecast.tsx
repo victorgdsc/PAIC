@@ -239,8 +239,6 @@ const SeasonalityForecast: React.FC = () => {
         typeof d.conf_upper === "number"
     );
   }, [chartData]);
-// Não acessar forecastData.ci_lower ou forecastData.ci_upper diretamente
-
 
   const lastHistoricalDate = useMemo(() => {
     const historicalPointsWithDates = chartData.filter(
@@ -421,24 +419,22 @@ const SeasonalityForecast: React.FC = () => {
                       <Line
                         type="monotone"
                         dataKey="conf_upper"
-                        stroke="#ef4444"
+                        stroke="red"
                         strokeWidth={1}
                         strokeDasharray="5 5"
                         dot={false}
                         connectNulls
                         name="Limite Superior (95%)"
-                        legendType="line"
                       />
                       <Line
                         type="monotone"
                         dataKey="conf_lower"
-                        stroke="#ef4444"
+                        stroke="red"
                         strokeWidth={1}
                         strokeDasharray="5 5"
                         dot={false}
                         connectNulls
                         name="Limite Inferior (95%)"
-                        legendType="line"
                       />
                     </LineChart>
                   </ResponsiveContainer>
@@ -451,7 +447,7 @@ const SeasonalityForecast: React.FC = () => {
                     <AlertDescription className="mt-2 text-sm space-y-1">
                       <p>
                         <strong>Tipo:</strong>{" "}
-                        {forecastData.model_details.order_or_family}
+                        {forecastData.model_details.order_or_family || forecastData.model_details.type || "GLM"}
                       </p>
                       <p>
                         <strong>Significância Estatística:</strong>{" "}

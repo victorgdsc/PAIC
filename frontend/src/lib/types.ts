@@ -19,6 +19,18 @@ export interface DataStats {
   processedAt: Date;
 }
 
+export interface ModelDetails {
+  type: string;
+  order_or_family: string;
+  aic: number;
+  significant: boolean;
+  pvalues?: { [key: string]: number };
+  confidence_level: "Alta" | "Média" | "Baixa";
+  confidence_desc: string;
+  warning?: string;
+  significance_desc?: string;
+}
+
 export interface AnalysisResult {
   delayStatistics: {
     averageDelay: number;
