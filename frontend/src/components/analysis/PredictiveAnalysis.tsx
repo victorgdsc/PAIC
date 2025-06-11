@@ -281,8 +281,8 @@ const PredictiveAnalysis: React.FC = () => {
                         )}
                         <p>
                           {predictionResult.reliability >= 0.7
-                            ? "Esta previsão é altamente confiável com base em casos semelhantes suficientes em seus dados."
-                            : "Esta previsão tem confiabilidade limitada devido a poucos casos semelhantes em seus dados."}
+                            ? "Esta previsão é altamente confiável."
+                            : "Esta previsão tem confiabilidade limitada."}
                         </p>
                       </div>
                     </div>
