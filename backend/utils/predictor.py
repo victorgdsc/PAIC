@@ -148,20 +148,13 @@ def predict_delay(df: pd.DataFrame, query: dict, columns: list):
             filtered = pd.concat([same_month, window]).drop_duplicates()
 
         if len(filtered) == 0:
-            for col in ["Product Group", "Shipment Mode", "Country"]:
-                if col in filters and len(filters) > 1:
-                    del filters[col]
-                    filtered = df.copy()
-                    filtered["actual_date"] = pd.to_datetime(
-                        filtered["actual_date"]
-                    ).dt.tz_localize(None)
-                    for c, v in filters.items():
-                        if c in filtered.columns:
-                            if filtered[c].dtype == "object":
-                                filtered = filtered[
-                                    filtered[c].astype(str).str.lower()
-                                    == str(v).lower()
-                                ]
+            return {
+                "error": "Nenhum dado histórico encontrado para os critérios fornecidos",
+                "prediction": 0,
+                "probability": 0,
+                "similarCases": 0,
+                "model_used": "no_data",
+            }
                             else:
                                 filtered = filtered[filtered[c] == v]
                     if "actual_date" in filtered.columns and query_date is not None:
