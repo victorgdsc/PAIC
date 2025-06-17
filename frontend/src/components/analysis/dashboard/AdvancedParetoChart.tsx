@@ -285,14 +285,7 @@ const AdvancedParetoChart: React.FC<AdvancedParetoChartProps> = ({
                           registros.
                         </p>
                       </li>
-                      <li>
-                        <span className="font-medium">Pontuação:</span>
-                        <p className="text-muted-foreground mt-0.5">
-                          Combina quantidade e severidade, dando mais peso para
-                          fatores que atrasam muito e com frequência,
-                          identificando os de maior impacto.
-                        </p>
-                      </li>
+                      
                     </ul>
                   </div>
                 </div>
@@ -303,8 +296,7 @@ const AdvancedParetoChart: React.FC<AdvancedParetoChartProps> = ({
                   onChange={(val) => setMetricType(val as any)}
                   options={[
                     { value: "avg", label: "Média" },
-                    { value: "sum", label: "Soma" },
-                    { value: "score", label: "Pontuação" }
+                    { value: "sum", label: "Soma" }
                   ]}
                   placeholder="Tipo de Métrica"
                 />
