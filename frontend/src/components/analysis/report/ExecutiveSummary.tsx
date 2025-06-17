@@ -1,40 +1,34 @@
 import React from "react";
+import { useData } from "@/context/DataContext";
 import { AlertTriangle, CheckCircle2 } from "lucide-react";
 
-interface ExecutiveSummaryProps {
-  rawDataLength: number;
-  delayStatistics: {
-    averageDelay: number;
-    medianDelay: number;
-    minDelay: number;
-    maxDelay: number;
-  };
-  insights: string[];
-}
+const ExecutiveSummary: React.FC = () => {
+  const { analysisResult } = useData();
 
-const ExecutiveSummary: React.FC<ExecutiveSummaryProps> = ({
-  rawDataLength,
-  delayStatistics,
-}) => {
+  if (!analysisResult || !analysisResult.delayStatistics) {
+    return <div>Resumo executivo indisponível.</div>;
+  }
+
+  const { averageDelay, medianDelay, minDelay, maxDelay } = analysisResult.delayStatistics;
+  const totalDeliveries = analysisResult.totalDeliveries;
+
   return (
     <div>
       <div className="p-4 rounded-lg bg-muted/30 text-sm space-y-2">
         <p>
-          Esta análise é baseada em {rawDataLength} registros de entrega. O
+          Esta análise é baseada em {totalDeliveries} registros de entrega. O
           atraso médio na entrega é{" "}
           <strong
             className={
-              delayStatistics.averageDelay > 0
-                ? "text-red-500"
-                : "text-green-500"
+              averageDelay > 0 ? "text-red-500" : "text-green-500"
             }
           >
-            {delayStatistics.averageDelay.toFixed(1)} dias
+            {averageDelay.toFixed(1)} dias
           </strong>
           .
         </p>
 
-        {delayStatistics.averageDelay > 6 ? (
+        {averageDelay > 6 ? (
           <p className="flex items-start">
             <AlertTriangle className="h-4 w-4 text-red-500 mr-2 mt-0.5 flex-shrink-0" />
             <span>
@@ -42,7 +36,7 @@ const ExecutiveSummary: React.FC<ExecutiveSummaryProps> = ({
               problemas sistêmicos no processo de entrega.
             </span>
           </p>
-        ) : delayStatistics.averageDelay < -6 ? (
+        ) : averageDelay < -6 ? (
           <p className="flex items-start">
             <AlertTriangle className="h-4 w-4 text-amber-500 mr-2 mt-0.5 flex-shrink-0" />
             <span>
